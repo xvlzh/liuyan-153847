@@ -1,11 +1,116 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>测试页面</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>153847.xyz 留言板</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 600px; margin: 50px auto; padding: 0 20px; line-height: 1.6; }
+        h1 { color: #333; }
+        input, textarea { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        button { background: #0070f3; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; margin-right: 5px; }
+        button:hover { background: #0051a2; }
+        #update-announcement-btn { background: #28a745; }
+        #update-announcement-btn:hover { background: #1e7e34; }
+        .announcement-box { background: #f0f7ff; padding: 20px; border-radius: 10px; margin-bottom: 30px; }
+        #announcement-display { background: white; padding: 10px; border-radius: 5px; margin-bottom: 10px; white-space: pre-wrap; }
+        #update-status { margin-left: 10px; font-size: 0.9em; }
+    </style>
 </head>
-<script defer src="/_vercel/insights/script.js"></script>
 <body>
-    <h1>Hello, 153847.xyz!</h1>
-    <p>如果你能看到这个，说明部署成功了。</p>
+    <h1>📝 153847.xyz 留言板</h1>
+
+    <!-- ========== 公共公告栏（所有人可修改） ========== -->
+    <div class="announcement-box">
+        <h3>📢 公共公告（所有人可编辑）</h3>
+        <div id="announcement-display">加载中...</div>
+        <div>
+            <textarea id="announcement-input" rows="3" placeholder="输入新公告内容..."></textarea>
+            <button id="update-announcement-btn">更新公告</button>
+            <span id="update-status"></span>
+        </div>
+    </div>
+
+    <!-- ========== Cusdis 评论区 ========== -->
+    <h2>💬 留言区</h2>
+    <div id="cusdis_thread"
+         data-host="https://cusdis.com"
+         data-app-id="你的App ID"   <!-- 替换成你的 Cusdis App ID -->
+         data-page-id="{{ page.url }}"
+         data-page-url="{{ page.url }}"
+         data-page-title="{{ page.title }}">
+    </div>
+    <script>
+        // 让 Cusdis 自动获取当前页面信息
+        var cusdisThread = document.getElementById('cusdis_thread');
+        if (cusdisThread) {
+            cusdisThread.setAttribute('data-page-id', window.location.pathname);
+            cusdisThread.setAttribute('data-page-url', window.location.href);
+            cusdisThread.setAttribute('data-page-title', document.title);
+        }
+    </script>
+    <script async defer src="https://cusdis.com/js/cusdis.es.js"></script>
+
+    <!-- ========== 公告栏的 JavaScript（Airtable 操作） ========== -->
+    <script>
+        // ⚠️ 把这四个变量替换成你自己的 Airtable 信息
+        const AIRTABLE_TOKEN = 'patXXXXXXXXXXXXXX';     // 你的 Personal Access Token（以 pat 开头）
+        const AIRTABLE_BASE_ID = 'appXXXXXXXXXXXXXX';   // 你的 Base ID（以 app 开头）
+        const AIRTABLE_TABLE_NAME = 'Announcement';     // 你的 Table 名字（比如 Announcement）
+        const AIRTABLE_RECORD_ID = 'recXXXXXXXXXXXXXX'; // 你的 Record ID（以 rec 开头）
+
+        // 加载公告
+        async function loadAnnouncement() {
+            try {
+                const response = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}/${AIRTABLE_RECORD_ID}`, {
+                    headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
+                });
+                const data = await response.json();
+                const content = data.fields.Content || '暂无公告';
+                document.getElementById('announcement-display').innerText = content;
+                document.getElementById('announcement-input').value = content;
+            } catch (error) {
+                console.error('加载公告失败:', error);
+                document.getElementById('announcement-display').innerText = '加载失败，请刷新';
+            }
+        }
+
+        // 更新公告
+        async function updateAnnouncement() {
+            const newContent = document.getElementById('announcement-input').value.trim();
+            if (!newContent) { alert('请输入内容'); return; }
+
+            const statusSpan = document.getElementById('update-status');
+            statusSpan.innerText = '更新中...';
+
+            try {
+                const response = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}/${AIRTABLE_RECORD_ID}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ fields: { Content: newContent } })
+                });
+
+                if (response.ok) {
+                    statusSpan.innerText = '✅ 更新成功！';
+                    document.getElementById('announcement-display').innerText = newContent;
+                    setTimeout(() => { statusSpan.innerText = ''; }, 3000);
+                } else {
+                    statusSpan.innerText = '❌ 更新失败';
+                }
+            } catch (error) {
+                console.error('更新失败:', error);
+                statusSpan.innerText = '❌ 更新失败';
+            }
+        }
+
+        // 绑定事件
+        document.getElementById('update-announcement-btn').addEventListener('click', updateAnnouncement);
+
+        // 页面加载时读取公告
+        loadAnnouncement();
+    </script>
 </body>
 </html>

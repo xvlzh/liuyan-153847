@@ -1,70 +1,10 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>153847.xyz 留言板</title>
-    <style>
-        body { font-family: system-ui, sans-serif; max-width: 600px; margin: 50px auto; padding: 0 20px; line-height: 1.6; }
-        h1 { color: #333; }
-        textarea { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; }
-        button { background: #0070f3; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
-        button:hover { background: #0051a2; }
-        .message { border-bottom: 1px solid #eee; padding: 10px 0; }
-        .name { font-weight: bold; }
-        .date { color: #666; font-size: 0.9em; }
-    </style>
+    <title>测试页面</title>
 </head>
 <body>
-    <h1>📝 153847.xyz 留言板</h1>
-    <p>在这里留下你想说的话吧～</p>
-
-    <div>
-        <input type="text" id="name" placeholder="你的名字（可选）" style="width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ccc; border-radius: 5px;">
-        <textarea id="message" rows="4" placeholder="写点什么..."></textarea>
-        <button onclick="postMessage()">发布留言</button>
-    </div>
-
-    <h2>💬 过往留言</h2>
-    <div id="messages"></div>
-
-    <script>
-        function loadMessages() {
-            const messages = JSON.parse(localStorage.getItem('messages') || '[]');
-            const container = document.getElementById('messages');
-            container.innerHTML = '';
-            messages.reverse().forEach(msg => {
-                const div = document.createElement('div');
-                div.className = 'message';
-                div.innerHTML = `<span class="name">${escapeHtml(msg.name || '匿名')}</span> <span class="date">${msg.date}</span><br>${escapeHtml(msg.text)}`;
-                container.appendChild(div);
-            });
-        }
-
-        function postMessage() {
-            const name = document.getElementById('name').value.trim() || '匿名';
-            const text = document.getElementById('message').value.trim();
-            if (!text) return alert('请填写留言内容');
-            
-            const messages = JSON.parse(localStorage.getItem('messages') || '[]');
-            messages.push({
-                name: name,
-                text: text,
-                date: new Date().toLocaleString('zh-CN')
-            });
-            localStorage.setItem('messages', JSON.stringify(messages));
-            document.getElementById('message').value = '';
-            loadMessages();
-        }
-
-        function escapeHtml(unsafe) {
-            return unsafe.replace(/[&<>"]/g, function(m) {
-                if(m === '&') return '&amp;'; if(m === '<') return '&lt;'; if(m === '>') return '&gt;'; if(m === '"') return '&quot;';
-                return m;
-            });
-        }
-
-        loadMessages();
-    </script>
+    <h1>Hello, 153847.xyz!</h1>
+    <p>如果你能看到这个，说明部署成功了。</p>
 </body>
 </html>

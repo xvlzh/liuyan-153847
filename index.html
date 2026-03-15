@@ -18,12 +18,10 @@
         .message-item { border-bottom: 1px solid #eee; padding: 10px 0; }
         .message-content { font-size: 1.1em; }
         .message-time { color: #666; font-size: 0.8em; }
+        .like-button { background: none; color: #e0245e; border: 1px solid #e0245e; padding: 2px 8px; font-size: 0.8em; margin-left: 10px; cursor: pointer; border-radius: 12px; }
+        .like-button:hover { background: #ffe6ec; }
     </style>
 </head>
-<script>
-window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
-</script>
-<script defer src="/_vercel/insights/script.js"></script>
 <body>
     <h1>📝 153847.xyz 留言板</h1>
 
@@ -47,65 +45,64 @@ window.va = window.va || function () { (window.vaq = window.vaq || []).push(argu
     <div id="messages-list">
         加载留言中...
     </div>
-        <script>
-        // ===== 你的 Airtable 配置（请替换） =====
-        const AIRTABLE_TOKEN = 'pattBEDyzs6ms7ABI.0648e1561f284e6fc8dd422b7fa925a274a87f7ae3c5cd91364f594bd226abe6';     // 你的 Personal Access Token（以 pat 开头）
-        const AIRTABLE_BASE_ID = 'appSWD2bnJ4KS1MLL';   // 你的 Base ID（以 app 开头）
+    <script>
+    // ===== 你的 Airtable 配置（请替换） =====
+    const AIRTABLE_TOKEN = 'pattBEDyzs6ms7ABI.0648e1561f284e6fc8dd422b7fa925a274a87f7ae3c5cd91364f594bd226abe6';     // 你的 Personal Access Token（以 pat 开头）
+    const AIRTABLE_BASE_ID = 'appSWD2bnJ4KS1MLL';   // 你的 Base ID（以 app 开头）
 
-        // 公告栏用的表
-        const ANNOUNCEMENT_TABLE = 'Table 1';      // 公告栏表名
-        const ANNOUNCEMENT_RECORD_ID = 'recEHZwz7JnDHzvZx'; // 公告记录 ID
+    // 公告栏用的表
+    const ANNOUNCEMENT_TABLE = 'Table 1';      // 公告栏表名
+    const ANNOUNCEMENT_RECORD_ID = 'recEHZwz7JnDHzvZx'; // 公告记录 ID
 
-        // 留言板用的新表
-        const MESSAGES_TABLE = 'Messages';              // 新留言表名
+    // 留言板用的新表
+    const MESSAGES_TABLE = 'Messages';              // 新留言表名
 
-        // ---------- 公告栏功能 ----------
-        async function loadAnnouncement() {
-            try {
-                const response = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${ANNOUNCEMENT_TABLE}/${ANNOUNCEMENT_RECORD_ID}`, {
-                    headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
-                });
-                const data = await response.json();
-                const content = data.fields.Content || '暂无公告';
-                document.getElementById('announcement-display').innerText = content;
-                document.getElementById('announcement-input').value = content;
-            } catch (error) {
-                console.error('加载公告失败:', error);
-                document.getElementById('announcement-display').innerText = '加载失败，请刷新';
-            }
+    // ---------- 公告栏功能 ----------
+    async function loadAnnouncement() {
+        try {
+            const response = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${ANNOUNCEMENT_TABLE}/${ANNOUNCEMENT_RECORD_ID}`, {
+                headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
+            });
+            const data = await response.json();
+            const content = data.fields.Content || '暂无公告';
+            document.getElementById('announcement-display').innerText = content;
+            document.getElementById('announcement-input').value = content;
+        } catch (error) {
+            console.error('加载公告失败:', error);
+            document.getElementById('announcement-display').innerText = '加载失败，请刷新';
         }
+    }
 
-        async function updateAnnouncement() {
-            const newContent = document.getElementById('announcement-input').value.trim();
-            if (!newContent) { alert('请输入内容'); return; }
+    async function updateAnnouncement() {
+        const newContent = document.getElementById('announcement-input').value.trim();
+        if (!newContent) { alert('请输入内容'); return; }
 
-            const statusSpan = document.getElementById('update-status');
-            statusSpan.innerText = '更新中...';
+        const statusSpan = document.getElementById('update-status');
+        statusSpan.innerText = '更新中...';
 
-            try {
-                const response = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${ANNOUNCEMENT_TABLE}/${ANNOUNCEMENT_RECORD_ID}`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ fields: { Content: newContent } })
-                });
+        try {
+            const response = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${ANNOUNCEMENT_TABLE}/${ANNOUNCEMENT_RECORD_ID}`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ fields: { Content: newContent } })
+            });
 
-                if (response.ok) {
-                    statusSpan.innerText = '✅ 更新成功！';
-                    document.getElementById('announcement-display').innerText = newContent;
-                    setTimeout(() => { statusSpan.innerText = ''; }, 3000);
-                } else {
-                    statusSpan.innerText = '❌ 更新失败';
-                }
-            } catch (error) {
-                console.error('更新失败:', error);
+            if (response.ok) {
+                statusSpan.innerText = '✅ 更新成功！';
+                document.getElementById('announcement-display').innerText = newContent;
+                setTimeout(() => { statusSpan.innerText = ''; }, 3000);
+            } else {
                 statusSpan.innerText = '❌ 更新失败';
             }
+        } catch (error) {
+            console.error('更新失败:', error);
+            statusSpan.innerText = '❌ 更新失败';
         }
-
-        // ---------- 留言板功能 ----------
+    }
+                // ---------- 留言板功能 ----------
         async function loadMessages() {
             try {
                 // 只显示最新50条，按时间倒序（新到旧）
@@ -122,15 +119,19 @@ window.va = window.va || function () { (window.vaq = window.vaq || []).push(argu
                 let html = '';
                 messages.forEach(record => {
                     const msg = record.fields.Message || '';
-                    // 格式化时间，精确到秒
                     const time = record.fields.CreatedAt ? new Date(record.fields.CreatedAt).toLocaleString('zh-CN', {
                         year: 'numeric', month: '2-digit', day: '2-digit',
                         hour: '2-digit', minute: '2-digit', second: '2-digit'
                     }) : '';
+                    const likes = record.fields.Likes || 0;
                     html += `
-                        <div class="message-item">
+                        <div class="message-item" id="msg-${record.id}">
                             <div class="message-content">${escapeHtml(msg)}</div>
                             <div class="message-time">${time}</div>
+                            <div style="margin-top: 5px;">
+                                <span>❤️ ${likes}</span>
+                                <button class="like-button" onclick="likeMessage('${record.id}')">点赞</button>
+                            </div>
                         </div>
                     `;
                 });
@@ -155,7 +156,8 @@ window.va = window.va || function () { (window.vaq = window.vaq || []).push(argu
                     body: JSON.stringify({
                         fields: {
                             Message: content,
-                            CreatedAt: new Date().toISOString()
+                            CreatedAt: new Date().toISOString(),
+                            Likes: 0
                         }
                     })
                 });
@@ -163,12 +165,93 @@ window.va = window.va || function () { (window.vaq = window.vaq || []).push(argu
                 if (response.ok) {
                     document.getElementById('new-message').value = '';
                     loadMessages(); // 重新加载留言列表
+                    // 触发自动删除旧留言（不等待）
+                    trimOldMessages();
                 } else {
                     alert('发布失败');
                 }
             } catch (error) {
                 console.error('发布失败:', error);
                 alert('发布失败');
+            }
+        }
+
+        // 点赞功能
+        async function likeMessage(recordId) {
+            try {
+                // 先获取当前点赞数
+                const getRes = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${MESSAGES_TABLE}/${recordId}`, {
+                    headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
+                });
+                const record = await getRes.json();
+                const currentLikes = record.fields.Likes || 0;
+
+                // 点赞数 +1
+                const updateRes = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${MESSAGES_TABLE}/${recordId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        fields: {
+                            Likes: currentLikes + 1
+                        }
+                    })
+                });
+
+                if (updateRes.ok) {
+                    // 更新页面上的点赞数（不重新加载全部，提高体验）
+                    const likeSpan = document.querySelector(`#msg-${recordId} .like-button`).previousElementSibling;
+                    if (likeSpan) {
+                        likeSpan.innerText = `❤️ ${currentLikes + 1}`;
+                    } else {
+                        // 如果找不到元素，简单重新加载
+                        loadMessages();
+                    }
+                } else {
+                    alert('点赞失败，请重试');
+                }
+            } catch (error) {
+                console.error('点赞失败:', error);
+                alert('点赞失败');
+            }
+        }
+
+        // 自动删除旧留言（当总数达到800时，删除400条最旧的）
+        async function trimOldMessages() {
+            try {
+                // 查询当前留言总数（只获取记录 ID，节省流量）
+                const countRes = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${MESSAGES_TABLE}?fields%5B%5D=CreatedAt`, {
+                    headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
+                });
+                const countData = await countRes.json();
+                const total = countData.records.length;
+
+                const MAX_RECORDS = 800;  // 触发删除的阈值
+                const KEEP_COUNT = 400;    // 删除后保留的数量
+
+                if (total >= MAX_RECORDS) {
+                    const excess = total - KEEP_COUNT; // 需要删除的条数
+                    // 获取最旧的 excess 条留言（按时间升序）
+                    const oldRes = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${MESSAGES_TABLE}?sort[0][field]=CreatedAt&sort[0][direction]=asc&maxRecords=${excess}&fields%5B%5D=CreatedAt`, {
+                        headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
+                    });
+                    const oldData = await oldRes.json();
+
+                    // 逐一删除
+                    for (let record of oldData.records) {
+                        await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${MESSAGES_TABLE}/${record.id}`, {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
+                        });
+                    }
+                    console.log(`已自动删除 ${oldData.records.length} 条旧留言`);
+                    // 重新加载留言列表，反映删除后的结果
+                    loadMessages();
+                }
+            } catch (error) {
+                console.error('自动删除旧留言失败:', error);
             }
         }
 
@@ -193,3 +276,4 @@ window.va = window.va || function () { (window.vaq = window.vaq || []).push(argu
     </script>
 </body>
 </html>
+        

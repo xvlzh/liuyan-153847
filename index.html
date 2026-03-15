@@ -177,22 +177,15 @@
         }
 
         // 点赞功能
-        async function likeMessage(recordId, event) {
-    const button = event.target; // 获取被点击的按钮
-    if (button.disabled) return;
-    button.disabled = true;
-
+        async function likeMessage(recordId) {
     try {
         // 先获取当前点赞数
         const getRes = await fetch(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${MESSAGES_TABLE}/${recordId}`, {
             headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
         });
-
         if (!getRes.ok) {
-            const errText = await getRes.text();
-            throw new Error(`获取点赞数失败 (HTTP ${getRes.status}): ${errText}`);
+            throw new Error(`获取点赞数失败 (HTTP ${getRes.status})`);
         }
-
         const record = await getRes.json();
         const currentLikes = record.fields.Likes || 0;
 
@@ -209,24 +202,18 @@
         });
 
         if (!updateRes.ok) {
-            const errText = await updateRes.text();
-            throw new Error(`更新点赞数失败 (HTTP ${updateRes.status}): ${errText}`);
+            throw new Error(`更新点赞数失败 (HTTP ${updateRes.status})`);
         }
 
-        // 更新页面上的点赞数
-        const likeSpan = button.previousElementSibling;
-        if (likeSpan && likeSpan.tagName === 'SPAN') {
-            likeSpan.innerText = `❤️ ${currentLikes + 1}`;
-        } else {
-            loadMessages(); // 保底刷新
-        }
+        // 重新加载整个留言列表（简单粗暴，保证数据一致）
+        loadMessages();
+        alert('点赞成功！'); // 可选，给你一个反馈
     } catch (error) {
-        console.error('点赞失败详细错误:', error);
-        alert('点赞失败：' + error.message); // 直接显示错误原因
-    } finally {
-        setTimeout(() => { button.disabled = false; }, 500);
+        console.error('点赞失败:', error);
+        alert('点赞失败：' + error.message);
     }
-        }
+}
+    
             
         // 自动删除旧留言（当总数达到800时，删除400条最旧的）
         async function trimOldMessages() {

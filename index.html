@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>加速度监测器 (gal)</title>
+    <title>加速度监测仪 · 烈度震度曲线</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            user-select: none;
         }
         body {
             background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
@@ -26,7 +26,7 @@
             border-radius: 48px;
             padding: 20px;
             width: 100%;
-            max-width: 500px;
+            max-width: 600px;
             box-shadow: 0 25px 45px rgba(0,0,0,0.3);
             border: 1px solid rgba(255,255,255,0.2);
         }
@@ -59,45 +59,54 @@
             font-weight: bold;
             color: #ffd966;
         }
-        .visual {
+        .intensity-value {
+            font-size: 1.2rem;
+            background: #2c3e50;
+            padding: 0 8px;
+            border-radius: 20px;
+        }
+        .canvas-container {
+            background: rgba(0,0,0,0.3);
+            border-radius: 20px;
+            padding: 10px;
+            margin: 15px 0;
+        }
+        canvas {
+            width: 100%;
+            height: 180px;
+            display: block;
+        }
+        .control-bar {
             display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
             justify-content: center;
-            margin-top: 10px;
         }
-        .ball-container {
-            background: #1e2a32;
-            border-radius: 200px;
-            width: 200px;
-            height: 200px;
-            position: relative;
-            overflow: hidden;
-            border: 2px solid #5bc0be;
-        }
-        .ball {
-            width: 40px;
-            height: 40px;
-            background: radial-gradient(circle at 30% 30%, #ff9a9e, #fad0c4);
-            border-radius: 50%;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            transition: all 0.05s linear;
-        }
-        .permission-btn {
+        button {
             background: #4caf50;
             border: none;
             color: white;
-            font-size: 1.2rem;
-            padding: 12px 24px;
-            border-radius: 60px;
+            font-size: 0.9rem;
+            padding: 8px 16px;
+            border-radius: 40px;
             cursor: pointer;
-            width: 100%;
-            margin-top: 10px;
             font-weight: bold;
+            transition: 0.2s;
         }
-        .permission-btn:hover {
-            background: #45a049;
+        button:hover {
+            transform: scale(1.02);
+            opacity: 0.9;
+        }
+        .slider-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            font-size: 0.8rem;
+        }
+        input[type="range"] {
+            width: 150px;
         }
         .status {
             text-align: center;
@@ -111,114 +120,228 @@
             color: #ccc;
             margin-top: 20px;
         }
+        .blink-bg {
+            animation: blinkBg 0.3s ease;
+        }
+        @keyframes blinkBg {
+            0% { background: rgba(255,80,80,0.3); }
+            100% { background: rgba(0,0,0,0.5); }
+        }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>📳 加速度监测仪 (gal)</h1>
-     <div class="card">
+    <h1>📳 加速度监测仪</h1>
+    <div class="card" id="dataCard">
         <div class="data-row">
-            <span class="data-label">加速度 X (含重力) [gal]</span>
-            <span class="data-value" id="accel-g-x">0.00</span>
+            <span class="data-label">加速度 X (gal)</span>
+            <span class="data-value" id="accel-x">0.00</span>
         </div>
         <div class="data-row">
-            <span class="data-label">加速度 Y (含重力) [gal]</span>
-            <span class="data-value" id="accel-g-y">0.00</span>
+            <span class="data-label">加速度 Y (gal)</span>
+            <span class="data-value" id="accel-y">0.00</span>
         </div>
         <div class="data-row">
-            <span class="data-label">加速度 Z (含重力) [gal]</span>
-            <span class="data-value" id="accel-g-z">0.00</span>
+            <span class="data-label">加速度 Z (gal)</span>
+            <span class="data-value" id="accel-z">0.00</span>
         </div>
         <div class="data-row">
-            <span class="data-label">线性加速度 X [gal]</span>
-            <span class="data-value" id="linear-x">0.00</span>
+            <span class="data-label">合成加速度 (gal)</span>
+            <span class="data-value" id="total-accel">0.00</span>
         </div>
         <div class="data-row">
-            <span class="data-label">线性加速度 Y [gal]</span>
-            <span class="data-value" id="linear-y">0.00</span>
+            <span class="data-label">中国地震烈度</span>
+            <span class="data-value intensity-value" id="intensity-china">Ⅰ</span>
         </div>
         <div class="data-row">
-            <span class="data-label">线性加速度 Z [gal]</span>
-            <span class="data-value" id="linear-z">0.00</span>
-        </div>
-        <div class="data-row">
-            <span class="data-label">旋转速率 α [deg/s]</span>
-            <span class="data-value" id="rot-alpha">0.00</span>
-        </div>
-        <div class="data-row">
-            <span class="data-label">旋转速率 β [deg/s]</span>
-            <span class="data-value" id="rot-beta">0.00</span>
-        </div>
-        <div class="data-row">
-            <span class="data-label">旋转速率 γ [deg/s]</span>
-            <span class="data-value" id="rot-gamma">0.00</span>
+            <span class="data-label">日本震度 (JMA)</span>
+            <span class="data-value intensity-value" id="intensity-japan">0</span>
         </div>
     </div>
 
-    <div class="visual">
-        <div class="ball-container" id="ballContainer">
-            <div class="ball" id="ball"></div>
+    <div class="canvas-container">
+        <canvas id="accelChart" width="400" height="180"></canvas>
+    </div>
+
+    <div class="control-bar">
+        <button id="toggleGravityBtn">📊 显示线性加速度</button>
+        <button id="togglePrecisionBtn">🔢 精度: 0.1 gal</button>
+        <div class="slider-label">
+            <span>🐢 更新速度</span>
+            <input type="range" id="speedSlider" min="50" max="500" value="200" step="10">
+            <span id="speedValue">200</span><span>ms</span>
         </div>
     </div>
-    <button id="requestBtn" class="permission-btn">🔘 请求传感器权限</button>
-    <div id="statusMsg" class="status">⚡ 点击上方按钮授权后开始监测</div>
-    <footer>倾斜手机 → 小球移动 | 加速度单位: gal (1 gal = 1 cm/s²)</footer>
-</div>   
+    <div class="status" id="statusMsg">⚡ 点击下方按钮授权传感器</div>
+    <button id="requestBtn" class="permission-btn" style="width:100%;">🔘 请求传感器权限</button>
+    <footer>曲线显示最近30次合成加速度 | 震度上升时播放对应音效 | 可调刷新率</footer>
+</div>
 <script>
-    let motionEnabled = false;
-    const accelGX = document.getElementById('accel-g-x');
-    const accelGY = document.getElementById('accel-g-y');
-    const accelGZ = document.getElementById('accel-g-z');
-    const linearX = document.getElementById('linear-x');
-    const linearY = document.getElementById('linear-y');
-    const linearZ = document.getElementById('linear-z');
-    const rotAlpha = document.getElementById('rot-alpha');
-    const rotBeta = document.getElementById('rot-beta');
-    const rotGamma = document.getElementById('rot-gamma');
-    const ball = document.getElementById('ball');
-    const ballContainer = document.getElementById('ballContainer');
+    // ---------- DOM 元素 ----------
+    const accelXSpan = document.getElementById('accel-x');
+    const accelYSpan = document.getElementById('accel-y');
+    const accelZSpan = document.getElementById('accel-z');
+    const totalSpan = document.getElementById('total-accel');
+    const intensityChinaSpan = document.getElementById('intensity-china');
+    const intensityJapanSpan = document.getElementById('intensity-japan');
     const statusDiv = document.getElementById('statusMsg');
     const requestBtn = document.getElementById('requestBtn');
+    const toggleGravityBtn = document.getElementById('toggleGravityBtn');
+    const togglePrecisionBtn = document.getElementById('togglePrecisionBtn');
+    const speedSlider = document.getElementById('speedSlider');
+    const speedValueSpan = document.getElementById('speedValue');
 
-    let containerWidth = 200, containerHeight = 200;
-    const ballWidth = 40;
+    // ---------- 状态变量 ----------
+    let motionEnabled = false;
+    let showGravity = true;          // true: 显示含重力加速度; false: 显示线性加速度
+    let precision = 0.1;             // 显示精度: 0.1 或 1
+    let updateInterval = 200;        // ms
+    let lastJapanIntensity = "0";    // 记录上一次震度字符串
+    let dataArray = [];              // 存储合成加速度用于图表，最多30点
+    let chart = null;                // Chart.js 实例
+    let audioAllowed = false;        // 是否允许播放音频（需用户交互后）
+    let lastPlayTime = 0;            // 简单防抖：1秒内不重复播放
+    const DEBOUNCE_MS = 1000;
 
-    function updateBallOrientation(beta, gamma) {
-        let x = (gamma / 90) * (containerWidth/2 - ballWidth/2);
-        let y = (beta / 90) * (containerHeight/2 - ballWidth/2);
-        x = Math.min(Math.max(x, -containerWidth/2 + ballWidth/2), containerWidth/2 - ballWidth/2);
-        y = Math.min(Math.max(y, -containerHeight/2 + ballWidth/2), containerHeight/2 - ballWidth/2);
-        ball.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+    // ---------- 震度音频映射 ----------
+    function getAudioForIntensity(japanIntensity) {
+        const map = {
+            "0": "shindo0",
+            "1": "shindo1",
+            "2": "shindo2",
+            "3": "shindo3",
+            "4": "shindo4",
+            "5弱": "shindo5",
+            "5强": "shindo5",
+            "6弱": "shindo6",
+            "6强": "shindo6",
+            "7": "shindo7"
+        };
+        const name = map[japanIntensity];
+        return name ? `/${name}.mp3` : null;
     }
 
+    function playBeepByIntensity(japanIntensity) {
+        if (!audioAllowed) return;
+        const now = Date.now();
+        if (now - lastPlayTime < DEBOUNCE_MS) return; // 防抖，避免连续快速播放
+        const url = getAudioForIntensity(japanIntensity);
+        if (!url) return;
+        const audio = new Audio(url);
+        audio.play().catch(e => console.log("音频播放失败", e));
+        lastPlayTime = now;
+    }
+
+    // ---------- 烈度/震度映射 (基于 gal) ----------
+    function getChinaIntensity(gal) {
+        if (gal < 0.5) return "Ⅰ (无感)";
+        if (gal < 1.2) return "Ⅱ";
+        if (gal < 2.5) return "Ⅲ";
+        if (gal < 5.0) return "Ⅳ";
+        if (gal < 10) return "Ⅴ";
+        if (gal < 22) return "Ⅵ";
+        if (gal < 45) return "Ⅶ";
+        if (gal < 90) return "Ⅷ";
+        if (gal < 180) return "Ⅸ";
+        if (gal < 350) return "Ⅹ";
+        if (gal < 700) return "Ⅺ";
+        return "Ⅻ";
+    }
+
+    function getJapanIntensity(gal) {
+        if (gal < 0.8) return "0";
+        if (gal < 2.5) return "1";
+        if (gal < 8.0) return "2";
+        if (gal < 25) return "3";
+        if (gal < 80) return "4";
+        if (gal < 140) return "5弱";
+        if (gal < 250) return "5强";
+        if (gal < 400) return "6弱";
+        if (gal < 700) return "6强";
+        return "7";
+    }
+
+    // 将震度字符串转换为数值以便比较大小
+    function japanIntensityValue(intensity) {
+        const map = {
+            "0": 0, "1": 1, "2": 2, "3": 3, "4": 4,
+            "5弱": 5.1, "5强": 5.5, "6弱": 6.1, "6强": 6.5, "7": 7
+        };
+        return map[intensity] !== undefined ? map[intensity] : 0;
+    }
+
+    // ---------- 更新UI ----------
+    function updateUI(ax, ay, az, total) {
+        // 精度处理
+        let toFixedVal = precision === 0.1 ? 1 : 0;
+        accelXSpan.innerText = ax.toFixed(toFixedVal);
+        accelYSpan.innerText = ay.toFixed(toFixedVal);
+        accelZSpan.innerText = az.toFixed(toFixedVal);
+        totalSpan.innerText = total.toFixed(toFixedVal);
+        
+        const china = getChinaIntensity(total);
+        const japan = getJapanIntensity(total);
+        intensityChinaSpan.innerText = china;
+        intensityJapanSpan.innerText = japan;
+        
+        // 震度变大时播放音频并闪烁
+        const prevVal = japanIntensityValue(lastJapanIntensity);
+        const curVal = japanIntensityValue(japan);
+        if (curVal > prevVal) {
+            playBeepByIntensity(japan);
+            // 闪烁效果
+            const card = document.getElementById('dataCard');
+            card.classList.add('blink-bg');
+            setTimeout(() => card.classList.remove('blink-bg'), 300);
+        }
+        lastJapanIntensity = japan;
+        
+        // 更新图表
+        dataArray.push(total);
+        if (dataArray.length > 30) dataArray.shift();
+        if (chart) {
+            chart.data.datasets[0].data = [...dataArray];
+            chart.update();
+        }
+    }
+
+    // 线性加速度死区处理 (小于 ±10 gal 归零)
+    function applyDeadzone(val) {
+        return Math.abs(val) < 10 ? 0 : val;
+    }
+
+    // ---------- 传感器数据处理 ----------
+    let lastTimestamp = 0;
     function handleMotion(event) {
         if (!motionEnabled) return;
-        const accel = event.accelerationIncludingGravity;
-        if (accel) {
-            // 转换为 gal (1 m/s² = 100 gal)
-            accelGX.innerText = ((accel.x || 0) * 100).toFixed(1);
-            accelGY.innerText = ((accel.y || 0) * 100).toFixed(1);
-            accelGZ.innerText = ((accel.z || 0) * 100).toFixed(1);
+        const now = Date.now();
+        if (now - lastTimestamp < updateInterval) return;
+        lastTimestamp = now;
+        
+        let ax = 0, ay = 0, az = 0;
+        if (showGravity && event.accelerationIncludingGravity) {
+            ax = (event.accelerationIncludingGravity.x || 0) * 100;
+            ay = (event.accelerationIncludingGravity.y || 0) * 100;
+            az = (event.accelerationIncludingGravity.z || 0) * 100;
+        } else if (!showGravity && event.acceleration) {
+            ax = (event.acceleration.x || 0) * 100;
+            ay = (event.acceleration.y || 0) * 100;
+            az = (event.acceleration.z || 0) * 100;
+            // 线性加速度应用死区
+            ax = applyDeadzone(ax);
+            ay = applyDeadzone(ay);
+            az = applyDeadzone(az);
+        } else if (event.accelerationIncludingGravity) {
+            // fallback
+            ax = (event.accelerationIncludingGravity.x || 0) * 100;
+            ay = (event.accelerationIncludingGravity.y || 0) * 100;
+            az = (event.accelerationIncludingGravity.z || 0) * 100;
         }
-        const linear = event.acceleration;
-        if (linear) {
-            linearX.innerText = ((linear.x || 0) * 100).toFixed(1);
-            linearY.innerText = ((linear.y || 0) * 100).toFixed(1);
-            linearZ.innerText = ((linear.z || 0) * 100).toFixed(1);
-        }
-        const rotation = event.rotationRate;
-        if (rotation) {
-            rotAlpha.innerText = (rotation.alpha || 0).toFixed(1);
-            rotBeta.innerText = (rotation.beta || 0).toFixed(1);
-            rotGamma.innerText = (rotation.gamma || 0).toFixed(1);
-        }
+        const total = Math.sqrt(ax*ax + ay*ay + az*az);
+        updateUI(ax, ay, az, total);
     }
 
-    function handleOrientation(event) {
-        if (!motionEnabled) return;
-        updateBallOrientation(event.beta, event.gamma);
-    }
-
+    // ---------- 权限请求 ----------
     function requestSensorPermission() {
         if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
             DeviceMotionEvent.requestPermission()
@@ -237,26 +360,10 @@
 
     function enableMotion() {
         motionEnabled = true;
-        statusDiv.innerText = '✅ 监测已启动 (单位: gal) | 倾斜手机试试';
+        audioAllowed = true;   // 用户已交互，允许音频
+        statusDiv.innerText = '✅ 监测已启动 | 震度上升时播放音效';
         window.addEventListener('devicemotion', handleMotion);
-        window.addEventListener('deviceorientation', handleOrientation);
     }
-
-    function updateContainerSize() {
-        const rect = ballContainer.getBoundingClientRect();
-        containerWidth = rect.width;
-        containerHeight = rect.height;
-    }
-
-    requestBtn.addEventListener('click', requestSensorPermission);
-    window.addEventListener('resize', updateContainerSize);
-    setTimeout(updateContainerSize, 100);
-
-    if (typeof DeviceMotionEvent !== 'undefined' && DeviceMotionEvent.requestPermission) {
-        statusDiv.innerText = '📱 iOS 需要点击按钮授权';
-    } else {
-        statusDiv.innerText = '🟢 点击按钮开始监测 (gal)';
-    }
-</script>
 </body>
-</html>    
+</html>
+     

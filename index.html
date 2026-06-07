@@ -3,136 +3,266 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>高分辨率线性加速度 (高通滤波)</title>
+    <title>高分辨率线性加速度 · 增强版</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{background:linear-gradient(135deg,#0a0f1a,#101520);font-family:'Segoe UI',system-ui;padding:20px}
+        .container{max-width:650px;margin:0 auto}
+        .card{background:rgba(20,30,45,0.85);backdrop-filter:blur(8px);border-radius:32px;padding:20px;margin-bottom:20px;border:1px solid rgba(255,255,255,0.1)}
+        .card-title{font-size:1.2rem;font-weight:600;margin-bottom:16px;color:#c0e0ff;border-left:3px solid #ffaa66;padding-left:12px}
+        .grid-2col{display:flex;gap:20px;flex-wrap:wrap}
+        .grid-2col>div{flex:1;min-width:140px}
+        .data-label{color:#a0b8d0;font-size:0.85rem}
+        .data-value{font-family:'Courier New',monospace;font-size:1.8rem;font-weight:bold;color:#ffd966}
+        .unit{font-size:0.8rem;color:#aaa}
+        .separator{height:1px;background:rgba(255,255,255,0.1);margin:16px 0}
+        .raw-data{background:rgba(0,0,0,0.3);border-radius:20px;padding:12px;margin-top:12px}
+        .control-bar{display:flex;flex-wrap:wrap;gap:10px;margin:15px 0;justify-content:center}
+        button{background:#2c3e50;border:none;color:#fff;font-size:0.85rem;padding:8px 16px;border-radius:40px;cursor:pointer}
+        button:active{transform:scale(0.96)}
+        .slider-label{display:flex;align-items:center;gap:8px;background:#1e2a3a;padding:4px 12px;border-radius:40px;font-size:0.75rem;color:#ccc}
+        input[type="range"]{width:120px}
+        .status-text{font-size:0.8rem;color:#88ffaa;text-align:center;margin-top:10px}
+        .chart-container{margin-top:16px;background:#0a0f1a;border-radius:20px;padding:10px}
+        canvas{width:100%;height:180px;display:block}
+        .intensity-box{display:flex;justify-content:space-between;background:#1e2a3a;border-radius:28px;padding:10px 16px;margin-top:16px}
+        .intensity-label{font-weight:500;color:#c0e0ff}
+        .intensity-value{font-weight:bold;color:#ffaa66}
+        footer{text-align:center;font-size:0.7rem;color:#6a7a8a;margin-top:10px}
+    </style>
 </head>
 <body>
-    <h3>高分辨率线性加速度（单位：Gal）</h3>
-    <p>X轴: <span id="linX">--</span> Gal</p>
-    <p>Y轴: <span id="linY">--</span> Gal</p>
-    <p>Z轴: <span id="linZ">--</span> Gal</p>
-    <hr>
-    <p><strong>原始含重力数据</strong>（仅供对比分辨率）:</p>
-    <p>含重力 X: <span id="rawX">--</span> Gal &nbsp; | Y: <span id="rawY">--</span> Gal &nbsp; | Z: <span id="rawZ">--</span> Gal</p>
-    <hr>
-    <p id="status">⚡ 等待授权/数据...</p>
-    <button id="requestBtn">🔐 授权传感器（iOS必需，Android点不点都行）</button>
+<div class="container">
+    <div class="card">
+        <div class="card-title">高分辨率线性加速度 (高通滤波)</div>
+        <div class="grid-2col">
+            <div><div class="data-label">X 轴</div><div><span class="data-value" id="linX">--</span><span class="unit"> Gal</span></div></div>
+            <div><div class="data-label">Y 轴</div><div><span class="data-value" id="linY">--</span><span class="unit"> Gal</span></div></div>
+            <div><div class="data-label">Z 轴</div><div><span class="data-value" id="linZ">--</span><span class="unit"> Gal</span></div></div>
+        </div>
+        <div class="separator"></div>
+        <div class="raw-data">
+            <div>原始含重力数据（对比分辨率）</div>
+            <div>X: <span id="rawX">--</span> Gal | Y: <span id="rawY">--</span> Gal | Z: <span id="rawZ">--</span> Gal</div>
+        </div>
+    </div>
 
-    <script>
-        (function() {
-            // 滤波参数 —— 截止频率约 5Hz（采样率按 50Hz 估算）
-            const alpha = 0.2;   // 低通滤波系数，越小越平滑但响应慢
-            // 重力估计初始值（假设设备初始静止，从第一帧学习）
-            let gravityEst = { x: 0, y: 0, z: 0 };
-            let firstFrame = true;
-            
-            // DOM 元素
-            const linXSpan = document.getElementById('linX');
-            const linYSpan = document.getElementById('linY');
-            const linZSpan = document.getElementById('linZ');
-            const rawXSpan = document.getElementById('rawX');
-            const rawYSpan = document.getElementById('rawY');
-            const rawZSpan = document.getElementById('rawZ');
-            const statusSpan = document.getElementById('status');
-            
-            let motionHandler = null;
-            
-            // 处理 devicemotion 事件
-            function onDeviceMotion(event) {
-                const accWithG = event.accelerationIncludingGravity;
-                if (!accWithG) {
-                    statusSpan.innerText = '❌ 当前设备不支持 accelerationIncludingGravity';
-                    return;
-                }
-                
-                // 原始含重力数据（m/s²）
-                let rawX = (accWithG.x !== undefined && accWithG.x !== null) ? accWithG.x : 0;
-                let rawY = (accWithG.y !== undefined && accWithG.y !== null) ? accWithG.y : 0;
-                let rawZ = (accWithG.z !== undefined && accWithG.z !== null) ? accWithG.z : 0;
-                
-                // 显示原始含重力数据（转换为 Gal，保留两位小数，展示高分辨率）
-                rawXSpan.innerText = (rawX * 100).toFixed(2);
-                rawYSpan.innerText = (rawY * 100).toFixed(2);
-                rawZSpan.innerText = (rawZ * 100).toFixed(2);
-                
-                // 第一帧：用当前值初始化重力估计（假设起始时接近静止）
-                if (firstFrame) {
-                    gravityEst = { x: rawX, y: rawY, z: rawZ };
-                    firstFrame = false;
-                    // 初始时刻线性加速度显示为 0
-                    linXSpan.innerText = (0).toFixed(2);
-                    linYSpan.innerText = (0).toFixed(2);
-                    linZSpan.innerText = (0).toFixed(2);
-                    return;
-                }
-                
-                // 低通滤波更新重力估计
-                gravityEst.x = alpha * rawX + (1 - alpha) * gravityEst.x;
-                gravityEst.y = alpha * rawY + (1 - alpha) * gravityEst.y;
-                gravityEst.z = alpha * rawZ + (1 - alpha) * gravityEst.z;
-                
-                // 线性加速度 = 含重力 - 估计重力
-                let linX = rawX - gravityEst.x;
-                let linY = rawY - gravityEst.y;
-                let linZ = rawZ - gravityEst.z;
-                
-                // 转换为 Gal（1 m/s² = 100 Gal）并保留两位小数
-                linXSpan.innerText = (linX * 100).toFixed(2);
-                linYSpan.innerText = (linY * 100).toFixed(2);
-                linZSpan.innerText = (linZ * 100).toFixed(2);
-                
-                // 更新状态（仅当第一次有数据时）
-                if (statusSpan.innerText.includes('等待') || statusSpan.innerText.includes('未授权')) {
-                    statusSpan.innerText = '✅ 数据实时更新中（静止时应接近 0 Gal）';
-                }
+    <div class="card">
+        <div class="card-title">合成线性加速度曲线</div>
+        <div class="chart-container"><canvas id="accelChart"></canvas></div>
+        <div class="intensity-box">
+            <span class="intensity-label">中国烈度</span><span class="intensity-value" id="chinaIntensity">Ⅰ (无感)</span>
+            <span class="intensity-label">日本震度</span><span class="intensity-value" id="japanIntensity">0</span>
+        </div>
+        <div class="control-bar">
+            <button id="calibrateBtn">归零校准</button>
+            <div class="slider-label"><span>曲线范围 ±</span><input type="range" id="rangeSlider" min="5" max="500" value="100" step="5"><span id="rangeValue">100</span><span> Gal</span></div>
+            <div class="slider-label"><span>更新速度 (ms)</span><input type="range" id="speedSlider" min="30" max="300" value="100" step="10"><span id="speedValue">100</span></div>
+        </div>
+    </div>
+
+    <div class="card" style="text-align:center">
+        <button id="requestBtn">🔐 授权传感器（iOS必需，Android点不点都行）</button>
+        <div id="status" class="status-text">⚡ 等待授权/数据...</div>
+        <footer>核心滤波算法未改动 | 归零校准仅修正显示偏差 | 震度上升时有提示音</footer>
+    </div>
+</div>    
+<script>
+(function() {
+    const alpha = 0.2;
+    let gravityEst = { x: 0, y: 0, z: 0 };
+    let firstFrame = true;
+    const linXSpan = document.getElementById('linX');
+    const linYSpan = document.getElementById('linY');
+    const linZSpan = document.getElementById('linZ');
+    const rawXSpan = document.getElementById('rawX');
+    const rawYSpan = document.getElementById('rawY');
+    const rawZSpan = document.getElementById('rawZ');
+    const statusSpan = document.getElementById('status');
+    let motionHandler = null;
+    function onDeviceMotion(event) {
+        const accWithG = event.accelerationIncludingGravity;
+        if (!accWithG) { statusSpan.innerText = '❌ 不支持 accelerationIncludingGravity'; return; }
+        let rawX = (accWithG.x !== undefined && accWithG.x !== null) ? accWithG.x : 0;
+        let rawY = (accWithG.y !== undefined && accWithG.y !== null) ? accWithG.y : 0;
+        let rawZ = (accWithG.z !== undefined && accWithG.z !== null) ? accWithG.z : 0;
+        rawXSpan.innerText = (rawX * 100).toFixed(2);
+        rawYSpan.innerText = (rawY * 100).toFixed(2);
+        rawZSpan.innerText = (rawZ * 100).toFixed(2);
+        if (firstFrame) {
+            gravityEst = { x: rawX, y: rawY, z: rawZ };
+            firstFrame = false;
+            linXSpan.innerText = (0).toFixed(2);
+            linYSpan.innerText = (0).toFixed(2);
+            linZSpan.innerText = (0).toFixed(2);
+            return;
+        }
+        gravityEst.x = alpha * rawX + (1 - alpha) * gravityEst.x;
+        gravityEst.y = alpha * rawY + (1 - alpha) * gravityEst.y;
+        gravityEst.z = alpha * rawZ + (1 - alpha) * gravityEst.z;
+        let linX = rawX - gravityEst.x;
+        let linY = rawY - gravityEst.y;
+        let linZ = rawZ - gravityEst.z;
+        linXSpan.innerText = (linX * 100).toFixed(2);
+        linYSpan.innerText = (linY * 100).toFixed(2);
+        linZSpan.innerText = (linZ * 100).toFixed(2);
+        if (statusSpan.innerText.includes('等待') || statusSpan.innerText.includes('未授权')) {
+            statusSpan.innerText = '✅ 数据实时更新中（静止时应接近 0 Gal）';
+        }
+    }
+    function startListening() {
+        if (motionHandler) window.removeEventListener('devicemotion', motionHandler);
+        motionHandler = onDeviceMotion;
+        window.addEventListener('devicemotion', motionHandler);
+        firstFrame = true;
+    }
+    function requestSensorPermission() {
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+            DeviceMotionEvent.requestPermission()
+                .then(permissionState => {
+                    if (permissionState === 'granted') { startListening(); statusSpan.innerText = '✅ 已授权，正在获取高分辨率数据...'; }
+                    else statusSpan.innerText = '❌ 授权失败';
+                })
+                .catch(err => statusSpan.innerText = '❌ 授权出错：' + err.message);
+        } else {
+            startListening();
+            statusSpan.innerText = '✅ 自动启动（安卓/旧iOS），静止时应接近 0 Gal';
+        }
+    }
+    const btn = document.getElementById('requestBtn');
+    btn.onclick = function() { requestSensorPermission(); };
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') {
+        startListening();
+        statusSpan.innerText = '✅ 自动启动（安卓/旧iOS），静止时应接近 0 Gal';
+    } else {
+        statusSpan.innerText = '🔘 请点击上方按钮授权传感器';
+    }
+})();
+</script>    
+<script>
+(function() {
+    function getLinAccel() {
+        const x = parseFloat(document.getElementById('linX').innerText);
+        const y = parseFloat(document.getElementById('linY').innerText);
+        const z = parseFloat(document.getElementById('linZ').innerText);
+        return { x: isNaN(x)?0:x, y: isNaN(y)?0:y, z: isNaN(z)?0:z };
+    }
+    function getChinaIntensity(gal) {
+        if (gal < 0.5) return "Ⅰ (无感)";
+        if (gal < 1.2) return "Ⅱ";
+        if (gal < 2.5) return "Ⅲ";
+        if (gal < 5.0) return "Ⅳ";
+        if (gal < 10) return "Ⅴ";
+        if (gal < 22) return "Ⅵ";
+        if (gal < 45) return "Ⅶ";
+        if (gal < 90) return "Ⅷ";
+        if (gal < 180) return "Ⅸ";
+        if (gal < 350) return "Ⅹ";
+        if (gal < 700) return "Ⅺ";
+        return "Ⅻ";
+    }
+    function getJapanIntensity(gal) {
+        if (gal < 0.8) return "0";
+        if (gal < 2.5) return "1";
+        if (gal < 8.0) return "2";
+        if (gal < 25) return "3";
+        if (gal < 80) return "4";
+        if (gal < 140) return "5弱";
+        if (gal < 250) return "5强";
+        if (gal < 400) return "6弱";
+        if (gal < 700) return "6强";
+        return "7";
+    }
+    function japanVal(intensity) {
+        const m = { "0":0,"1":1,"2":2,"3":3,"4":4,"5弱":5.1,"5强":5.5,"6弱":6.1,"6强":6.5,"7":7 };
+        return m[intensity]!==undefined?m[intensity]:0;
+    }
+    let audioAllowed = false, lastJapan = "0", lastPlay = 0;
+    function playBeep(intensity) {
+        if (!audioAllowed) return;
+        const now = Date.now();
+        if (now - lastPlay < 350) return;
+        const m = { "0":"shindo0","1":"shindo1","2":"shindo2","3":"shindo3","4":"shindo4","5弱":"shindo5","5强":"shindo5","6弱":"shindo6","6强":"shindo6","7":"shindo7" };
+        const name = m[intensity];
+        if (!name) return;
+        new Audio(`/${name}.mp3`).play().catch(e=>console.log);
+        lastPlay = now;
+    }
+    let offset = {x:0,y:0,z:0}, calibrating=false, calSamples=[];
+    function startCalibration() {
+        if (calibrating) return;
+        calibrating = true;
+        calSamples = [];
+        const statusDiv = document.getElementById('status');
+        statusDiv.innerText = '⚖️ 归零校准中，请保持手机静止...';
+        let count=0;
+        const iv = setInterval(() => {
+            const {x,y,z} = getLinAccel();
+            calSamples.push({x,y,z});
+            count++;
+            if (count>=30) {
+                clearInterval(iv);
+                let sx=0,sy=0,sz=0;
+                for(let s of calSamples) { sx+=s.x; sy+=s.y; sz+=s.z; }
+                offset.x = sx/calSamples.length;
+                offset.y = sy/calSamples.length;
+                offset.z = sz/calSamples.length;
+                calibrating = false;
+                statusDiv.innerText = '✅ 归零校准完成，显示已归零';
+                updateUI();
             }
-            
-            function startListening() {
-                if (motionHandler) {
-                    window.removeEventListener('devicemotion', motionHandler);
-                }
-                motionHandler = onDeviceMotion;
-                window.addEventListener('devicemotion', motionHandler);
-                firstFrame = true;   // 重置重力估计
-            }
-            
-            // 请求权限（iOS 13+）
-            function requestSensorPermission() {
-                if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                    DeviceMotionEvent.requestPermission()
-                        .then(permissionState => {
-                            if (permissionState === 'granted') {
-                                startListening();
-                                statusSpan.innerText = '✅ 已授权，正在获取高分辨率数据...';
-                            } else {
-                                statusSpan.innerText = '❌ 授权失败，无法获取传感器数据';
-                            }
-                        })
-                        .catch(err => {
-                            statusSpan.innerText = '❌ 授权出错：' + err.message;
-                        });
-                } else {
-                    // Android 或旧版 iOS 直接启动
-                    startListening();
-                    statusSpan.innerText = '✅ 自动启动（安卓/旧iOS），静止时应接近 0 Gal';
-                }
-            }
-            
-            // 绑定按钮
-            const btn = document.getElementById('requestBtn');
-            btn.onclick = function() {
-                requestSensorPermission();
-            };
-            
-            // 对于 Android 等不需要显式权限的环境，直接启动（但为了兼容 iOS 不自动调用，用户需点按钮）
-            // 检测不需要 requestPermission 则自动启动
-            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') {
-                // Android 环境，直接开始
-                startListening();
-                statusSpan.innerText = '✅ 自动启动（安卓/旧iOS），静止时应接近 0 Gal';
-            } else {
-                statusSpan.innerText = '🔘 请点击上方按钮授权传感器，以获得高分辨率线性加速度';
-            }
-        })();
-    </script>
+        }, 30);
+        setTimeout(()=>{ if(calibrating){ clearInterval(iv); calibrating=false; statusDiv.innerText='⚠️ 校准超时'; } },2000);
+    }
+    let chart=null, dataHist=Array(60).fill(0);
+    let updateInterval=100, timer=null;
+    function updateUI() {
+        let {x,y,z} = getLinAccel();
+        x -= offset.x; y -= offset.y; z -= offset.z;
+        const total = Math.sqrt(x*x+y*y+z*z);
+        const china = getChinaIntensity(total);
+        const japan = getJapanIntensity(total);
+        document.getElementById('chinaIntensity').innerText = china;
+        document.getElementById('japanIntensity').innerText = japan;
+        const prev = japanVal(lastJapan), cur = japanVal(japan);
+        if (cur > prev) { playBeep(japan); document.body.style.background='#3a2a2a'; setTimeout(()=>document.body.style.background='',200); }
+        lastJapan = japan;
+        dataHist.push(total);
+        if(dataHist.length>60) dataHist.shift();
+        if(chart) { chart.data.datasets[0].data = [...dataHist]; chart.update(); }
+    }
+    function initChart() {
+        const ctx = document.getElementById('accelChart').getContext('2d');
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: Array(60).fill(''), datasets: [{ label:'合成线性加速度 (Gal)', data:dataHist, borderColor:'#ffaa66', backgroundColor:'rgba(255,170,102,0.1)', borderWidth:2, pointRadius:0, tension:0, fill:true }] },
+            options: { responsive:true, maintainAspectRatio:true, animation:false, plugins:{ legend:{ labels:{ color:'#ddd' } } }, scales:{ y:{ title:{ display:true, text:'Gal', color:'#aaa' }, min:-100, max:100 }, x:{ ticks:{ display:false } } } }
+        });
+        document.getElementById('rangeSlider').addEventListener('input',(e)=>{
+            let v=parseInt(e.target.value);
+            document.getElementById('rangeValue').innerText=v;
+            if(chart){ chart.options.scales.y.max=v; chart.options.scales.y.min=-v; chart.update(); }
+        });
+        document.getElementById('speedSlider').addEventListener('input',(e)=>{
+            updateInterval=parseInt(e.target.value);
+            document.getElementById('speedValue').innerText=updateInterval;
+            if(timer) clearInterval(timer);
+            timer = setInterval(()=>updateUI(), updateInterval);
+        });
+    }
+    function startTimer() {
+        if(timer) clearInterval(timer);
+        timer = setInterval(()=>updateUI(), updateInterval);
+    }
+    document.getElementById('calibrateBtn').addEventListener('click', startCalibration);
+    const origBtn = document.getElementById('requestBtn');
+    const origClick = origBtn.onclick;
+    origBtn.onclick = function(e) { audioAllowed=true; if(origClick) origClick(e); };
+    initChart();
+    startTimer();
+    if(typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') audioAllowed=true;
+})();
+</script>
 </body>
-</html>
+</html>    

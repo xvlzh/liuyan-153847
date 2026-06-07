@@ -1,19 +1,5 @@
-<!DOCTYPE html>
-<html>
-<body>
-<h3>尝试 High‑Res Linear Acceleration</h3>
-<pre id="out">等待...</pre>
-<script>
 if ('LinearAccelerationSensor' in window) {
-  let sensor = new LinearAccelerationSensor({frequency: 60});
-  sensor.addEventListener('reading', () => {
-    document.getElementById('out').innerText = 
-      `X: ${(sensor.x*100).toFixed(3)} Gal\nY: ${(sensor.y*100).toFixed(3)} Gal\nZ: ${(sensor.z*100).toFixed(3)} Gal`;
-  });
+  let sensor = new LinearAccelerationSensor();
+  sensor.onreading = () => console.log(`X: ${sensor.x} m/s²`);
   sensor.start();
-} else {
-  document.getElementById('out').innerText = '当前浏览器不支持 LinearAccelerationSensor';
-}
-</script>
-</body>
-</html>
+} else alert('不支持');

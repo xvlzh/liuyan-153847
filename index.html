@@ -1,64 +1,261 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>153847.xyz - 我的文章</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>加速度监测器</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
         body {
-            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
-            max-width: 700px;
-            margin: 60px auto;
-            padding: 0 20px;
-            line-height: 1.7;
-            color: #1a1a1a;
-            background: #fefefe;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', system-ui, monospace;
+            padding: 20px;
+        }
+        .container {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(12px);
+            border-radius: 48px;
+            padding: 20px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 25px 45px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.2);
         }
         h1 {
-            font-size: 2.8rem;      /* 标题放大 */
-            margin-bottom: 0.5rem;
-            font-weight: 700;
-            letter-spacing: -0.01em;
-        }
-        .meta {
-            color: #6c6c6c;
-            font-size: 0.9rem;
-            border-bottom: 1px solid #eaeaea;
-            padding-bottom: 1rem;
-            margin-bottom: 2rem;
-        }
-        p {
-            font-size: 1.1rem;
-            margin-bottom: 1.5rem;
-        }
-        hr {
-            margin: 2rem 0;
-            border: 0;
-            border-top: 1px solid #eaeaea;
-        }
-        .footer {
-            margin-top: 3rem;
-            font-size: 0.8rem;
             text-align: center;
-            color: #aaa;
+            color: white;
+            font-size: 1.6rem;
+            margin-bottom: 16px;
+        }
+        .card {
+            background: rgba(0,0,0,0.5);
+            border-radius: 32px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            color: #e0e0e0;
+            font-size: 1rem;
+        }
+        .data-label {
+            font-weight: 600;
+            color: #a0d6ff;
+        }
+        .data-value {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: #ffd966;
+        }
+        .visual {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        .ball-container {
+            background: #1e2a32;
+            border-radius: 200px;
+            width: 200px;
+            height: 200px;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid #5bc0be;
+        }
+        .ball {
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle at 30% 30%, #ff9a9e, #fad0c4);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.05s linear;
+        }
+        .permission-btn {
+            background: #4caf50;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            padding: 12px 24px;
+            border-radius: 60px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .permission-btn:hover {
+            background: #45a049;
+        }
+        .status {
+            text-align: center;
+            color: #ffaa66;
+            margin-top: 10px;
+            font-size: 0.8rem;
+        }
+        footer {
+            font-size: 0.7rem;
+            text-align: center;
+            color: #ccc;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-
-    <!-- 第一篇文章 -->
-    <h1>要石v2.6.1 api备份</h1>
-    <div class="meta">2026年5月7日 · 记录/备份</div>
-    <p>{"SHOW_ABOUT_FLG":"20260313.00","mainSettings":"{\"source\":{\"jmaEew\":true,\"cwaEew\":true,\"ceaEew\":true,\"iclEew\":false,\"scEew\":true,\"fjEew\":true,\"kmaEew\":true,\"gqEew\":false,\"jmaEqlist\":true,\"cwaEqlist\":true,\"cencEqlist\":true,\"kmaEqlist\":true,\"usgsEqlist\":true,\"fssnEqlist\":true,\"jmaTsunami\":true,\"nmefcTsunami\":true},\"displaySeisNet\":{\"style\":\"nied\",\"hideNoData\":true,\"displayShindo0\":true,\"alwaysDisplayGrid\":true,\"displayMaxInt\":true,\"displayPeriodMaxInt\":true,\"delay\":0,\"niedNet\":true,\"niedSensitivity\":3,\"displayNiedShindo\":true,\"tremNet\":false,\"tremApi\":\"lb-1\",\"displayTremShindo\":false,\"kmaNet\":true,\"kmaSensitivity\":3,\"kmaIntHold\":1,\"displayKmaInt\":true},\"actionMag\":0,\"actionLocalCsis\":0,\"actionLocalShindo\":0,\"playIntenseSound\":false,\"intenseLocalCsis\":5,\"intenseLocalShindo\":3,\"gqActionMag\":5,\"usgsActionMag\":5,\"fssnActionMag\":5,\"fssnActionType\":1,\"actionWhiteList\":\"\",\"historyMagThres\":0,\"historySources\":[\"CENC\",\"CWA\"],\"onEew\":{\"notification\":true,\"sound\":true,\"focus\":false},\"onEewWarn\":{\"notification\":true,\"sound\":true,\"focus\":false},\"onReport\":{\"notification\":true,\"sound\":true,\"focus\":false},\"onShake\":{\"notification\":true,\"sound\":true,\"focus\":false},\"onTsunami\":{\"notification\":true,\"sound\":true,\"focus\":false},\"masterVolume\":100,\"muteNotification\":true,\"soundEffect\":\"srev\",\"userLatLng\":[0,0],\"displayUser\":true,\"displayLegend\":true,\"displayCountdown\":true,\"forceDisplayCountdown\":true,\"playCountdownSound\":true,\"countdownOnlyIntense\":false,\"countdownSpeech\":true,\"countdownStart\":60,\"displayAreaIntensities\":true,\"viewLatLng\":[40.7,122.2],\"defaultZoom\":5,\"uiScale\":1,\"displayPlaceName\":true,\"placeNameOnHover\":true,\"displayCnFault\":true,\"displayTerminator\":true,\"useRomanCsis\":false,\"fillSWave\":true,\"sWaveColorMode\":0,\"hideDrawer\":false,\"defaultMenuId\":\"main\",\"disableLastingEqlists\":false,\"tempEqlistDuration\":6.5,\"tempTsunamiDuration\":15,\"eqlistsDisplayMode\":0,\"alwaysDisplayLatestInfo\":true,\"disableEewBaseMap\":false,\"mapSimplifyFactor\":3,\"maxWaveRenderRate\":20,\"useCanvasRenderer\":true,\"minimizeOnLaunch\":false,\"autoCheckNewVersion\":true,\"checkPrerelease\":false,\"gameMode\":false,\"autoRefresh\":true}","advancedSettings":"{\"enableIclEew\":false,\"enableTremFunctions\":false,\"enableGqEew\":false,\"enableNmefcTsunami\":false,\"enableMultiApi\":false,\"provinceCeaEew\":true,\"defaultFanServer\":0,\"tokens\":{\"fan_dev\":\"\"},\"multiApi\":false,\"displayApiType\":true,\"forceCalcInt\":true,\"useClassicMapLoader\":true,\"preventFlickerMode\":true,\"mockEew\":true,\"mockOnReplay\":true}"}</p>
-    <p>注意删除所有空格<p>
-    <p>使用方法见https://chat.deepseek.com/share/nibr9bi06gl31rbz06<p>
-    
-    <hr>
-
-    
-
-    <div class="footer">
-        153847.xyz · 分享见解的地方
+<div class="container">
+    <h1>📳 加速度监测仪</h1>
+    <div class="card">
+        <div class="data-row">
+            <span class="data-label">加速度 X (含重力)</span>
+            <span class="data-value" id="accel-g-x">0.00</span>
+        </div>
+        <div class="data-row">
+            <span class="data-label">加速度 Y (含重力)</span>
+            <span class="data-value" id="accel-g-y">0.00</span>
+        </div>
+        <div class="data-row">
+            <span class="data-label">加速度 Z (含重力)</span>
+            <span class="data-value" id="accel-g-z">0.00</span>
+        </div>
+        <div class="data-row">
+            <span class="data-label">线性加速度 X</span>
+            <span class="data-value" id="linear-x">0.00</span>
+        </div>
+        <div class="data-row">
+            <span class="data-label">线性加速度 Y</span>
+            <span class="data-value" id="linear-y">0.00</span>
+        </div>
+        <div class="data-row">
+            <span class="data-label">线性加速度 Z</span>
+            <span class="data-value" id="linear-z">0.00</span>
+        </div>
+        <div class="data-row">
+            <span class="data-label">旋转速率 α (alpha)</span>
+            <span class="data-value" id="rot-alpha">0.00</span>
+        </div>
+        <div class="data-row">
+            <span class="data-label">旋转速率 β (beta)</span>
+            <span class="data-value" id="rot-beta">0.00</span>
+        </div>
+        <div class="data-row">
+            <span class="data-label">旋转速率 γ (gamma)</span>
+            <span class="data-value" id="rot-gamma">0.00</span>
+        </div>
     </div>
+
+    <div class="visual">
+        <div class="ball-container" id="ballContainer">
+            <div class="ball" id="ball"></div>
+        </div>
+    </div>
+    <button id="requestBtn" class="permission-btn">🔘 请求传感器权限</button>
+    <div id="statusMsg" class="status">⚡ 点击上方按钮授权后开始监测</div>
+    <footer>倾斜手机 → 小球移动 | 数据实时更新</footer>
+</div>
+<script>
+    let motionEnabled = false;
+    const accelGX = document.getElementById('accel-g-x');
+    const accelGY = document.getElementById('accel-g-y');
+    const accelGZ = document.getElementById('accel-g-z');
+    const linearX = document.getElementById('linear-x');
+    const linearY = document.getElementById('linear-y');
+    const linearZ = document.getElementById('linear-z');
+    const rotAlpha = document.getElementById('rot-alpha');
+    const rotBeta = document.getElementById('rot-beta');
+    const rotGamma = document.getElementById('rot-gamma');
+    const ball = document.getElementById('ball');
+    const ballContainer = document.getElementById('ballContainer');
+    const statusDiv = document.getElementById('statusMsg');
+    const requestBtn = document.getElementById('requestBtn');
+
+    let containerWidth = 200, containerHeight = 200;
+    const ballWidth = 40;
+
+    function updateBallOrientation(beta, gamma) {
+        let x = (gamma / 90) * (containerWidth/2 - ballWidth/2);
+        let y = (beta / 90) * (containerHeight/2 - ballWidth/2);
+        x = Math.min(Math.max(x, -containerWidth/2 + ballWidth/2), containerWidth/2 - ballWidth/2);
+        y = Math.min(Math.max(y, -containerHeight/2 + ballWidth/2), containerHeight/2 - ballWidth/2);
+        ball.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+    }
+
+    function handleMotion(event) {
+        if (!motionEnabled) return;
+        const accel = event.accelerationIncludingGravity;
+        if (accel) {
+            accelGX.innerText = (accel.x || 0).toFixed(2);
+            accelGY.innerText = (accel.y || 0).toFixed(2);
+            accelGZ.innerText = (accel.z || 0).toFixed(2);
+        }
+        const linear = event.acceleration;
+        if (linear) {
+            linearX.innerText = (linear.x || 0).toFixed(2);
+            linearY.innerText = (linear.y || 0).toFixed(2);
+            linearZ.innerText = (linear.z || 0).toFixed(2);
+        }
+        const rotation = event.rotationRate;
+        if (rotation) {
+            rotAlpha.innerText = (rotation.alpha || 0).toFixed(2);
+            rotBeta.innerText = (rotation.beta || 0).toFixed(2);
+            rotGamma.innerText = (rotation.gamma || 0).toFixed(2);
+        }
+    }
+
+    function handleOrientation(event) {
+        if (!motionEnabled) return;
+        updateBallOrientation(event.beta, event.gamma);
+    }
+
+    function requestSensorPermission() {
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+            DeviceMotionEvent.requestPermission()
+                .then(permissionState => {
+                    if (permissionState === 'granted') {
+                        enableMotion();
+                    } else {
+                        statusDiv.innerText = '❌ 权限被拒绝';
+                    }
+                })
+                .catch(err => statusDiv.innerText = '⚠️ 授权失败');
+        } else {
+            enableMotion();
+        }
+    }
+
+    function enableMotion() {
+        motionEnabled = true;
+        statusDiv.innerText = '✅ 监测已启动 | 倾斜手机试试';
+        window.addEventListener('devicemotion', handleMotion);
+        window.addEventListener('deviceorientation', handleOrientation);
+    }
+
+    function updateContainerSize() {
+        const rect = ballContainer.getBoundingClientRect();
+        containerWidth = rect.width;
+        containerHeight = rect.height;
+    }
+
+    requestBtn.addEventListener('click', requestSensorPermission);
+    window.addEventListener('resize', updateContainerSize);
+    setTimeout(updateContainerSize, 100);
+
+    if (typeof DeviceMotionEvent !== 'undefined' && DeviceMotionEvent.requestPermission) {
+        statusDiv.innerText = '📱 iOS 需要点击按钮授权';
+    } else {
+        statusDiv.innerText = '🟢 点击按钮开始监测';
+    }
+</script>
 </body>
-</html>
+</html>    

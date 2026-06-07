@@ -1,1 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>加速度原始数据测试</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #111; color: #0f0; }
+        .data { font-size: 1.5rem; margin: 10px 0; }
+        button { font-size: 1rem; padding: 10px 20px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>加速度原始数据（线性加速度 → gal）</h1>
+    <div class="data">X: <span id="x">0.000</span> gal</div>
+    <div class="data">Y: <span id="y">0.000</span> gal</div>
+    <div class="data">Z: <span id="z">0.000</span> gal</div>
+    <div class="data">合成: <span id="total">0.000</span> gal</div>
+    <div id="status">⚡ 未授权</div>
+    <button id="requestBtn">🔘 开始监测</button>
 
+    <script>
+        const xSpan = document.getElementById('x');
+        const ySpan = document.getElementById('y');
+        const zSpan = document.getElementById('z');
+        const totalSpan = document.getElementById('total');
+        const statusDiv = document.getElementById('status');
+        const requestBtn = document.getElementById('requestBtn');
+
+        let motionEnabled = false;
+        let animationId = null;
+        let lastX = 0, lastY = 0, lastZ = 0;
+
+        // 更新UI（每秒约60次，实际由传感器事件触发）
+        function updateUI() {
+            if (!motionEnabled) return;
+            const total = Math.sqrt(lastX*lastX + lastY*lastY + lastZ*lastZ);
+            xSpan.innerText = lastX.toFixed(3);
+            ySpan.innerText = lastY.toFixed(3);
+            zSpan.innerText = lastZ.toFixed(3);
+            totalSpan.innerText = total.toFixed(3);
+            requestAnimationFrame(updateUI);
+        }
+
+        function handleMotion(event) {
+            if (!motionEnabled) return;
+            if (event.acceleration) {
+                lastX = (event.acceleration.x || 0) * 100;
+                lastY = (event.acceleration.y || 0) * 100;
+                lastZ = (event.acceleration.z || 0) * 100;
+            }
+        }
+
+        function enableMotion() {
+            motionEnabled = true;
+            statusDiv.innerText = '✅ 监测中，晃动手机即可看到数值变化';
+            window.addEventListener('devicemotion', handleMotion);
+            updateUI();
+        }
+
+        function requestPermission() {
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                DeviceMotionEvent.requestPermission()
+                    .then(state => {
+                        if (state === 'granted') {
+                            enableMotion();
+                        } else {
+                            statusDiv.innerText = '❌ 权限被拒绝，无法获取加速度';
+                        }
+                    })
+                    .catch(err => {
+                        statusDiv.innerText = '⚠️ 授权失败: ' + err.message;
+                    });
+            } else {
+                // Android 或非限制浏览器，直接启用
+                enableMotion();
+            }
+        }
+
+        requestBtn.addEventListener('click', requestPermission);
+    </script>
+</body>
+</html>

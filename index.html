@@ -2,82 +2,87 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>加速度原始数据测试</title>
-    <style>
-        body { font-family: monospace; padding: 20px; background: #111; color: #0f0; }
-        .data { font-size: 1.5rem; margin: 10px 0; }
-        button { font-size: 1rem; padding: 10px 20px; margin-top: 20px; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>线性加速度 - 纯文字显示</title>
+    <!-- 没有任何CSS样式，纯浏览器默认外观 -->
 </head>
 <body>
-    <h1>加速度原始数据（线性加速度 → gal）</h1>
-    <div class="data">X: <span id="x">0.000</span> gal</div>
-    <div class="data">Y: <span id="y">0.000</span> gal</div>
-    <div class="data">Z: <span id="z">0.000</span> gal</div>
-    <div class="data">合成: <span id="total">0.000</span> gal</div>
-    <div id="status">⚡ 未授权</div>
-    <button id="requestBtn">🔘 开始监测</button>
+    <h3>手机线性加速度（单位：Gal）</h3>
+    <p>X轴: <span id="ax">--</span> Gal</p>
+    <p>Y轴: <span id="ay">--</span> Gal</p>
+    <p>Z轴: <span id="az">--</span> Gal</p>
+    <hr>
+    <p id="status">等待授权/数据...</p>
+    <button id="requestBtn">授权传感器（iOS必需，Android点不点都行）</button>
 
     <script>
-        const xSpan = document.getElementById('x');
-        const ySpan = document.getElementById('y');
-        const zSpan = document.getElementById('z');
-        const totalSpan = document.getElementById('total');
-        const statusDiv = document.getElementById('status');
-        const requestBtn = document.getElementById('requestBtn');
+        (function() {
+            let motionHandler = null;
 
-        let motionEnabled = false;
-        let animationId = null;
-        let lastX = 0, lastY = 0, lastZ = 0;
-
-        // 更新UI（每秒约60次，实际由传感器事件触发）
-        function updateUI() {
-            if (!motionEnabled) return;
-            const total = Math.sqrt(lastX*lastX + lastY*lastY + lastZ*lastZ);
-            xSpan.innerText = lastX.toFixed(3);
-            ySpan.innerText = lastY.toFixed(3);
-            zSpan.innerText = lastZ.toFixed(3);
-            totalSpan.innerText = total.toFixed(3);
-            requestAnimationFrame(updateUI);
-        }
-
-        function handleMotion(event) {
-            if (!motionEnabled) return;
-            if (event.acceleration) {
-                lastX = (event.acceleration.x || 0) * 100;
-                lastY = (event.acceleration.y || 0) * 100;
-                lastZ = (event.acceleration.z || 0) * 100;
+            function updateDisplay(event) {
+                const acc = event.acceleration;
+                if (!acc) {
+                    document.getElementById('status').innerText = '当前设备不支持 acceleration 字段';
+                    return;
+                }
+                // 获取各轴数值（m/s²），null/undefined 则当作0
+                let x = (acc.x !== undefined && acc.x !== null) ? acc.x : 0;
+                let y = (acc.y !== undefined && acc.y !== null) ? acc.y : 0;
+                let z = (acc.z !== undefined && acc.z !== null) ? acc.z : 0;
+                // 转换为 Gal: 1 m/s² = 100 Gal，保留两位小数，精确到0.01 Gal
+                document.getElementById('ax').innerText = (x * 100).toFixed(2);
+                document.getElementById('ay').innerText = (y * 100).toFixed(2);
+                document.getElementById('az').innerText = (z * 100).toFixed(2);
+                document.getElementById('status').innerText = '数据实时更新中（静止时接近0）';
             }
-        }
 
-        function enableMotion() {
-            motionEnabled = true;
-            statusDiv.innerText = '✅ 监测中，晃动手机即可看到数值变化';
-            window.addEventListener('devicemotion', handleMotion);
-            updateUI();
-        }
+            function startListening() {
+                if (motionHandler) {
+                    window.removeEventListener('devicemotion', motionHandler);
+                }
+                motionHandler = updateDisplay;
+                window.addEventListener('devicemotion', motionHandler);
+            }
 
-        function requestPermission() {
-            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                DeviceMotionEvent.requestPermission()
-                    .then(state => {
-                        if (state === 'granted') {
-                            enableMotion();
-                        } else {
-                            statusDiv.innerText = '❌ 权限被拒绝，无法获取加速度';
-                        }
-                    })
-                    .catch(err => {
-                        statusDiv.innerText = '⚠️ 授权失败: ' + err.message;
-                    });
+            // 请求权限（主要针对 iOS 13+）
+            function requestSensorPermission() {
+                if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                    // iOS 需要用户点击授权
+                    DeviceMotionEvent.requestPermission()
+                        .then(permissionState => {
+                            if (permissionState === 'granted') {
+                                startListening();
+                                document.getElementById('status').innerText = '已授权，正在获取数据...';
+                            } else {
+                                document.getElementById('status').innerText = '授权失败，无法获取传感器数据';
+                            }
+                        })
+                        .catch(err => {
+                            document.getElementById('status').innerText = '授权出错：' + err.message;
+                        });
+                } else {
+                    // Android 或旧版 iOS 直接启动
+                    startListening();
+                    document.getElementById('status').innerText = '已启动监听（无需授权或已支持）';
+                }
+            }
+
+            // 绑定按钮事件
+            const btn = document.getElementById('requestBtn');
+            btn.onclick = function(e) {
+                requestSensorPermission();
+            };
+
+            // 对于 Android 等不需要授权的情况，也可以自动尝试启动（但为避免iOS异常，不自动调用，让用户点按钮）
+            // 为了更友好：检测如果不是 iOS 请求权限模式，直接自动开始监听
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') {
+                // Android 环境，直接启动
+                startListening();
+                document.getElementById('status').innerText = '自动启动（安卓/旧iOS）';
             } else {
-                // Android 或非限制浏览器，直接启用
-                enableMotion();
+                document.getElementById('status').innerText = '请点击上方的按钮授权传感器';
             }
-        }
-
-        requestBtn.addEventListener('click', requestPermission);
+        })();
     </script>
 </body>
 </html>

@@ -224,9 +224,9 @@ function updateUI(ax, ay, az, total, rawX, rawY, rawZ) {
     }
 
     if (displayUnit === "gal") {
-        xGalSpan.innerText = displayX.toFixed(1);
-        yGalSpan.innerText = displayY.toFixed(1);
-        zGalSpan.innerText = displayZ.toFixed(1);
+        xGalSpan.innerText = displayX.toFixed(3);
+        yGalSpan.innerText = displayY.toFixed(3);
+        zGalSpan.innerText = displayZ.toFixed(3);
         xRawSpan.innerText = rawX.toFixed(3) + " m/s²";
         yRawSpan.innerText = rawY.toFixed(3) + " m/s²";
         zRawSpan.innerText = rawZ.toFixed(3) + " m/s²";

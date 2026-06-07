@@ -127,6 +127,12 @@
             0% { background: rgba(255,80,80,0.3); }
             100% { background: rgba(0,0,0,0.5); }
         }
+        .debug {
+            font-size: 0.7rem;
+            color: #aaa;
+            margin-top: 10px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -174,6 +180,7 @@
     </div>
     <div class="status" id="statusMsg">⚡ 点击下方按钮授权传感器</div>
     <button id="requestBtn" class="permission-btn" style="width:100%;">🔘 请求传感器权限</button>
+    <div id="debugInfo" class="debug"></div>
     <footer>曲线显示最近30次合成加速度 | 震度上升时播放对应音效 | 可调刷新率</footer>
 </div>
 <script>
@@ -185,6 +192,7 @@
     const intensityChinaSpan = document.getElementById('intensity-china');
     const intensityJapanSpan = document.getElementById('intensity-japan');
     const statusDiv = document.getElementById('statusMsg');
+    const debugDiv = document.getElementById('debugInfo');
     const requestBtn = document.getElementById('requestBtn');
     const toggleGravityBtn = document.getElementById('toggleGravityBtn');
     const togglePrecisionBtn = document.getElementById('togglePrecisionBtn');
@@ -193,28 +201,24 @@
 
     // ---------- 状态变量 ----------
     let motionEnabled = false;
-    let showGravity = true;          // true: 显示含重力加速度; false: 显示线性加速度
-    let precision = 0.1;             // 显示精度: 0.1 或 1
+    let showGravity = true;          // true: 含重力; false: 线性加速度
+    let precision = 0.1;             // 显示精度
     let updateInterval = 200;        // ms
-    let lastJapanIntensity = "0";    // 记录上一次震度字符串
-    let dataArray = [];              // 存储合成加速度用于图表，最多30点
-    let chart = null;                // Chart.js 实例
-    let audioAllowed = false;        // 是否允许播放音频（需用户交互后）
-    let lastPlayTime = 0;            // 简单防抖：1秒内不重复播放
+    let lastJapanIntensity = "0";
+    let dataArray = [];
+    let chart = null;
+    let audioAllowed = false;
+    let lastPlayTime = 0;
     const DEBOUNCE_MS = 1000;
+    let lastTimestamp = 0;
+    let sensorDataReceived = false;   // 标记是否收到过传感器数据
 
     // ---------- 震度音频映射 ----------
     function getAudioForIntensity(japanIntensity) {
         const map = {
-            "0": "shindo0",
-            "1": "shindo1",
-            "2": "shindo2",
-            "3": "shindo3",
-            "4": "shindo4",
-            "5弱": "shindo5",
-            "5强": "shindo5",
-            "6弱": "shindo6",
-            "6强": "shindo6",
+            "0": "shindo0", "1": "shindo1", "2": "shindo2", "3": "shindo3", "4": "shindo4",
+            "5弱": "shindo5", "5强": "shindo5",
+            "6弱": "shindo6", "6强": "shindo6",
             "7": "shindo7"
         };
         const name = map[japanIntensity];
@@ -224,7 +228,7 @@
     function playBeepByIntensity(japanIntensity) {
         if (!audioAllowed) return;
         const now = Date.now();
-        if (now - lastPlayTime < DEBOUNCE_MS) return; // 防抖，避免连续快速播放
+        if (now - lastPlayTime < DEBOUNCE_MS) return;
         const url = getAudioForIntensity(japanIntensity);
         if (!url) return;
         const audio = new Audio(url);
@@ -232,7 +236,7 @@
         lastPlayTime = now;
     }
 
-    // ---------- 烈度/震度映射 (基于 gal) ----------
+    // 烈度/震度映射
     function getChinaIntensity(gal) {
         if (gal < 0.5) return "Ⅰ (无感)";
         if (gal < 1.2) return "Ⅱ";
@@ -261,18 +265,16 @@
         return "7";
     }
 
-    // 将震度字符串转换为数值以便比较大小
     function japanIntensityValue(intensity) {
         const map = {
-            "0": 0, "1": 1, "2": 2, "3": 3, "4": 4,
-            "5弱": 5.1, "5强": 5.5, "6弱": 6.1, "6强": 6.5, "7": 7
+            "0":0,"1":1,"2":2,"3":3,"4":4,
+            "5弱":5.1,"5强":5.5,"6弱":6.1,"6强":6.5,"7":7
         };
         return map[intensity] !== undefined ? map[intensity] : 0;
     }
 
-    // ---------- 更新UI ----------
+    // 更新UI
     function updateUI(ax, ay, az, total) {
-        // 精度处理
         let toFixedVal = precision === 0.1 ? 1 : 0;
         accelXSpan.innerText = ax.toFixed(toFixedVal);
         accelYSpan.innerText = ay.toFixed(toFixedVal);
@@ -284,12 +286,10 @@
         intensityChinaSpan.innerText = china;
         intensityJapanSpan.innerText = japan;
         
-        // 震度变大时播放音频并闪烁
         const prevVal = japanIntensityValue(lastJapanIntensity);
         const curVal = japanIntensityValue(japan);
         if (curVal > prevVal) {
             playBeepByIntensity(japan);
-            // 闪烁效果
             const card = document.getElementById('dataCard');
             card.classList.add('blink-bg');
             setTimeout(() => card.classList.remove('blink-bg'), 300);
@@ -303,15 +303,11 @@
             chart.data.datasets[0].data = [...dataArray];
             chart.update();
         }
+        // 调试信息：显示合成加速度
+        debugDiv.innerText = `📊 最新合成加速度: ${total.toFixed(1)} gal | 传感器正常`;
     }
 
-    // 线性加速度死区处理 (小于 ±10 gal 归零)
-    function applyDeadzone(val) {
-        return Math.abs(val) < 10 ? 0 : val;
-    }
-
-    // ---------- 传感器数据处理 ----------
-    let lastTimestamp = 0;
+    // 传感器数据处理
     function handleMotion(event) {
         if (!motionEnabled) return;
         const now = Date.now();
@@ -319,29 +315,33 @@
         lastTimestamp = now;
         
         let ax = 0, ay = 0, az = 0;
+        let source = "";
         if (showGravity && event.accelerationIncludingGravity) {
             ax = (event.accelerationIncludingGravity.x || 0) * 100;
             ay = (event.accelerationIncludingGravity.y || 0) * 100;
             az = (event.accelerationIncludingGravity.z || 0) * 100;
+            source = "重力";
         } else if (!showGravity && event.acceleration) {
             ax = (event.acceleration.x || 0) * 100;
             ay = (event.acceleration.y || 0) * 100;
             az = (event.acceleration.z || 0) * 100;
-            // 线性加速度应用死区
-            ax = applyDeadzone(ax);
-            ay = applyDeadzone(ay);
-            az = applyDeadzone(az);
+            source = "线性";
         } else if (event.accelerationIncludingGravity) {
-            // fallback
             ax = (event.accelerationIncludingGravity.x || 0) * 100;
             ay = (event.accelerationIncludingGravity.y || 0) * 100;
             az = (event.accelerationIncludingGravity.z || 0) * 100;
+            source = "重力(fallback)";
+        }
+        
+        if (!sensorDataReceived && (ax !== 0 || ay !== 0 || az !== 0)) {
+            sensorDataReceived = true;
+            statusDiv.innerText = '✅ 传感器数据正常 | 震度上升有音效';
         }
         const total = Math.sqrt(ax*ax + ay*ay + az*az);
         updateUI(ax, ay, az, total);
     }
 
-    // ---------- 权限请求 ----------
+    // 权限请求
     function requestSensorPermission() {
         if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
             DeviceMotionEvent.requestPermission()
@@ -349,10 +349,14 @@
                     if (permissionState === 'granted') {
                         enableMotion();
                     } else {
-                        statusDiv.innerText = '❌ 权限被拒绝';
+                        statusDiv.innerText = '❌ 权限被拒绝，无法获取传感器数据';
+                        debugDiv.innerText = '请检查浏览器权限设置，允许运动传感器。';
                     }
                 })
-                .catch(err => statusDiv.innerText = '⚠️ 授权失败');
+                .catch(err => {
+                    statusDiv.innerText = '⚠️ 授权失败: ' + err.message;
+                    debugDiv.innerText = 'iOS 可能需要重新加载页面再点授权。';
+                });
         } else {
             enableMotion();
         }
@@ -360,10 +364,76 @@
 
     function enableMotion() {
         motionEnabled = true;
-        audioAllowed = true;   // 用户已交互，允许音频
-        statusDiv.innerText = '✅ 监测已启动 | 震度上升时播放音效';
+        audioAllowed = true;
+        statusDiv.innerText = '✅ 监测已启动 | 等待传感器数据...';
         window.addEventListener('devicemotion', handleMotion);
+        // 3秒后如果没有数据，给
+        setTimeout(() => {
+            if (!sensorDataReceived && motionEnabled) {
+                statusDiv.innerText = '⚠️ 未收到传感器数据，请确保手机有陀螺仪且浏览器已授权。';
+                debugDiv.innerText = '尝试晃动手机，若仍然无数据，请检查权限或换个浏览器。';
+            }
+        }, 3000);
     }
+
+    // 图表初始化
+    function initChart() {
+        const ctx = document.getElementById('accelChart').getContext('2d');
+        chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array(30).fill(''),
+                datasets: [{
+                    label: '合成加速度 (gal)',
+                    data: new Array(30).fill(0),
+                    borderColor: '#ffaa66',
+                    backgroundColor: 'rgba(255,170,102,0.1)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { labels: { color: '#ddd' } }
+                },
+                scales: {
+                    y: { title: { display: true, text: 'gal', color: '#aaa' }, grid: { color: '#335' } },
+                    x: { ticks: { display: false } }
+                }
+            }
+        });
+        dataArray = new Array(30).fill(0);
+        chart.data.datasets[0].data = dataArray;
+        chart.update();
+    }
+
+    // 控件事件
+    toggleGravityBtn.addEventListener('click', () => {
+        showGravity = !showGravity;
+        toggleGravityBtn.innerText = showGravity ? "📊 显示线性加速度" : "📊 显示重力加速度";
+        statusDiv.innerText = showGravity ? "当前显示: 含重力加速度" : "当前显示: 线性加速度";
+    });
+    togglePrecisionBtn.addEventListener('click', () => {
+        precision = precision === 0.1 ? 1 : 0.1;
+        togglePrecisionBtn.innerText = precision === 0.1 ? "🔢 精度: 0.1 gal" : "🔢 精度: 1 gal";
+    });
+    speedSlider.addEventListener('input', (e) => {
+        updateInterval = parseInt(e.target.value);
+        speedValueSpan.innerText = updateInterval;
+    });
+
+    requestBtn.addEventListener('click', requestSensorPermission);
+
+    initChart();
+    if (typeof DeviceMotionEvent !== 'undefined' && DeviceMotionEvent.requestPermission) {
+        statusDiv.innerText = '📱 iOS 需要点击“请求传感器权限”按钮授权';
+    } else {
+        statusDiv.innerText = '🟢 点击“请求传感器权限”开始监测';
+    }
+</script>
 </body>
-</html>
-     
+</html>    

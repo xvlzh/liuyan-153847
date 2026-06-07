@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>加速度实时监测 · 地震仪</title>
+    <title>高精度加速度监测 · 原始数据</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -26,7 +26,6 @@
         canvas { width: 100%; height: 160px; display: block; }
         .control-bar { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; justify-content: center; }
         button { background: #2c3e50; border: none; color: white; font-size: 0.8rem; padding: 6px 14px; border-radius: 40px; cursor: pointer; transition: 0.2s; }
-        button.active { background: #4caf50; }
         .slider-label { display: flex; align-items: center; gap: 8px; background: #1e2a3a; padding: 4px 12px; border-radius: 40px; }
         input[type="range"] { width: 120px; }
         .status { text-align: center; font-size: 0.75rem; color: #88ffaa; margin-top: 10px; }
@@ -37,43 +36,43 @@
 <body>
 <div class="container">
     <div class="card">
-        <div class="title">📳 加速度实时监测</div>
+        <div class="title">📳 加速度实时监测 · 原始数据</div>
         <div class="axis-grid">
-    <div class="axis-item">
-        <div class="axis-name">📐 X 轴</div>
-        <div class="values">
-            <span><span class="gal-value" id="x_gal">0.00</span> <span class="unit">gal</span></span>
-            <span class="raw-value" id="x_raw">0.000 m/s²</span>
+            <div class="axis-item">
+                <div class="axis-name">📐 X 轴</div>
+                <div class="values">
+                    <span><span class="gal-value" id="x_gal">0.000</span> <span class="unit">gal</span></span>
+                    <span class="raw-value" id="x_raw">0.000 m/s²</span>
+                </div>
+                <div class="peak-row">
+                    <span>峰值: <span id="x_peak_gal">0.000</span> gal</span>
+                    <span id="x_peak_time"></span>
+                </div>
+            </div>
+            <div class="axis-item">
+                <div class="axis-name">📐 Y 轴</div>
+                <div class="values">
+                    <span><span class="gal-value" id="y_gal">0.000</span> <span class="unit">gal</span></span>
+                    <span class="raw-value" id="y_raw">0.000 m/s²</span>
+                </div>
+                <div class="peak-row">
+                    <span>峰值: <span id="y_peak_gal">0.000</span> gal</span>
+                    <span id="y_peak_time"></span>
+                </div>
+            </div>
+            <div class="axis-item">
+                <div class="axis-name">📐 Z 轴</div>
+                <div class="values">
+                    <span><span class="gal-value" id="z_gal">0.000</span> <span class="unit">gal</span></span>
+                    <span class="raw-value" id="z_raw">0.000 m/s²</span>
+                </div>
+                <div class="peak-row">
+                    <span>峰值: <span id="z_peak_gal">0.000</span> gal</span>
+                    <span id="z_peak_time"></span>
+                </div>
+            </div>
         </div>
-        <div class="peak-row">
-            <span>峰值: <span id="x_peak_gal">0.00</span> gal</span>
-            <span id="x_peak_time"></span>
-        </div>
-    </div>
-    <div class="axis-item">
-        <div class="axis-name">📐 Y 轴</div>
-        <div class="values">
-            <span><span class="gal-value" id="y_gal">0.00</span> <span class="unit">gal</span></span>
-            <span class="raw-value" id="y_raw">0.000 m/s²</span>
-        </div>
-        <div class="peak-row">
-            <span>峰值: <span id="y_peak_gal">0.00</span> gal</span>
-            <span id="y_peak_time"></span>
-        </div>
-    </div>
-    <div class="axis-item">
-        <div class="axis-name">📐 Z 轴</div>
-        <div class="values">
-            <span><span class="gal-value" id="z_gal">0.00</span> <span class="unit">gal</span></span>
-            <span class="raw-value" id="z_raw">0.000 m/s²</span>
-        </div>
-        <div class="peak-row">
-            <span>峰值: <span id="z_peak_gal">0.00</span> gal</span>
-            <span id="z_peak_time"></span>
-        </div>
-    </div>
-        </div>
-          <div class="intensity-box">
+        <div class="intensity-box">
             <span class="intensity-label">🇨🇳 中国烈度</span>
             <span class="intensity-value" id="china_intensity">Ⅰ (无感)</span>
             <span class="intensity-label">🇯🇵 日本震度</span>
@@ -105,7 +104,7 @@
     <div class="status" id="statusMsg">⚡ 点击下方按钮授权传感器</div>
     <button id="requestBtn" style="width:100%; background:#4c6a8a;">🔘 请求传感器权限</button>
     <div id="debugInfo" class="debug"></div>
-    <footer>使用线性加速度 | 归零校准可消除静止偏差 | 震度上升播放音效</footer>
+    <footer>原始线性加速度 | 归零校准可消除静止偏差 | 震度上升播放音效</footer>
 </div>
 <script>
     // DOM 元素
@@ -139,7 +138,7 @@
     let lastTimestamp = 0;
     let audioAllowed = false;
     let lastPlayTime = 0;
-    const DEBOUNCE_MS = 800;
+    const DEBOUNCE_MS = 350;   // 防抖时间改为 350 毫秒
     let lastJapanIntensity = "0";
 
     let dataArray = [];
@@ -198,31 +197,35 @@ function playBeepByIntensity(japanIntensity) {
     lastPlayTime = now;
 }
 
-function updateUI(ax, ay, az, total, rawX, rawY, rawZ) {
+// 原始数据更新UI（无任何平滑滤波）
+function updateUI(ax, ay, az, rawX, rawY, rawZ) {
+    // 应用归零偏移
     let displayX = ax - offset.x;
     let displayY = ay - offset.y;
     let displayZ = az - offset.z;
-    let displayTotal = Math.sqrt(displayX*displayX + displayY*displayY + displayZ*displayZ);
+    let total = Math.sqrt(displayX*displayX + displayY*displayY + displayZ*displayZ);
     
+    // 更新峰值（使用偏移后的值）
     if (Math.abs(displayX) > peaks.x) {
         peaks.x = Math.abs(displayX);
         peakTimes.x = new Date().toLocaleTimeString();
-        xPeakSpan.innerText = peaks.x.toFixed(1);
+        xPeakSpan.innerText = peaks.x.toFixed(3);
         document.getElementById('x_peak_time').innerText = peakTimes.x;
     }
     if (Math.abs(displayY) > peaks.y) {
         peaks.y = Math.abs(displayY);
         peakTimes.y = new Date().toLocaleTimeString();
-        yPeakSpan.innerText = peaks.y.toFixed(1);
+        yPeakSpan.innerText = peaks.y.toFixed(3);
         document.getElementById('y_peak_time').innerText = peakTimes.y;
     }
     if (Math.abs(displayZ) > peaks.z) {
         peaks.z = Math.abs(displayZ);
         peakTimes.z = new Date().toLocaleTimeString();
-        zPeakSpan.innerText = peaks.z.toFixed(1);
+        zPeakSpan.innerText = peaks.z.toFixed(3);
         document.getElementById('z_peak_time').innerText = peakTimes.z;
     }
 
+    // 显示当前值（三位小数）
     if (displayUnit === "gal") {
         xGalSpan.innerText = displayX.toFixed(3);
         yGalSpan.innerText = displayY.toFixed(3);
@@ -239,8 +242,9 @@ function updateUI(ax, ay, az, total, rawX, rawY, rawZ) {
         zRawSpan.innerText = rawZ.toFixed(3) + " m/s²";
     }
 
-    const china = getChinaIntensity(displayTotal);
-    const japan = getJapanIntensity(displayTotal);
+    // 烈度震度基于合成加速度（原始值）
+    const china = getChinaIntensity(total);
+    const japan = getJapanIntensity(total);
     chinaSpan.innerText = china;
     japanSpan.innerText = japan;
     const prevVal = japanIntensityValue(lastJapanIntensity);
@@ -253,7 +257,8 @@ function updateUI(ax, ay, az, total, rawX, rawY, rawZ) {
     }
     lastJapanIntensity = japan;
 
-    dataArray.push(displayTotal);
+    // 图表数据使用合成加速度
+    dataArray.push(total);
     if (dataArray.length > 60) dataArray.shift();
     if (chart) {
         chart.data.datasets[0].data = [...dataArray];
@@ -261,84 +266,8 @@ function updateUI(ax, ay, az, total, rawX, rawY, rawZ) {
         chart.options.scales.y.min = -parseFloat(rangeSlider.value);
         chart.update();
     }
-    debugDiv.innerText = `📊 合成加速度: ${displayTotal.toFixed(1)} gal | 偏移 X:${offset.x.toFixed(1)} Y:${offset.y.toFixed(1)} Z:${offset.z.toFixed(1)}`;
-}
-
-function handleMotion(event) {
-    if (!motionEnabled) return;
-    const now = Date.now();
-    if (now - lastTimestamp < updateInterval) return;
-    lastTimestamp = now;
-
-    if (!event.acceleration) return;
-    let rawX = event.acceleration.x || 0;
-    let rawY = event.acceleration.y || 0;
-    let rawZ = event.acceleration.z || 0;
-    let ax = rawX * 100;
-    let ay = rawY * 100;
-    let az = rawZ * 100;
-
-    if (calibrating) {
-        calibrateSamples.push({x: ax, y: ay, z: az});
-        if (calibrateSamples.length >= 30) {
-            let sumX = 0, sumY = 0, sumZ = 0;
-            for (let s of calibrateSamples) { sumX += s.x; sumY += s.y; sumZ += s.z; }
-            offset.x = sumX / calibrateSamples.length;
-            offset.y = sumY / calibrateSamples.length;
-            offset.z = sumZ / calibrateSamples.length;
-            calibrating = false;
-            calibrateSamples = [];
-            statusDiv.innerText = '✅ 归零校准完成，静止偏差已消除';
-            debugDiv.innerText = `偏移 X:${offset.x.toFixed(1)} Y:${offset.y.toFixed(1)} Z:${offset.z.toFixed(1)}`;
-        }
-        return;
-    }
-
-    const total = Math.sqrt(ax*ax + ay*ay + az*az);
-    updateUI(ax, ay, az, total, rawX, rawY, rawZ);
-}
-
-function startCalibration() {
-    if (!motionEnabled) { statusDiv.innerText = '请先授权传感器'; return; }
-    calibrating = true;
-    calibrateSamples = [];
-    statusDiv.innerText = '⚖️ 正在归零校准，请保持手机静止... (2秒)';
-    setTimeout(() => {
-        if (calibrating && calibrateSamples.length < 20) {
-            calibrating = false;
-            statusDiv.innerText = '⚠️ 校准采样不足，请重试';
-        }
-    }, 2500);
-}    
-    function requestSensorPermission() {
-        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-            DeviceMotionEvent.requestPermission()
-                .then(state => {
-                    if (state === 'granted') enableMotion();
-                    else statusDiv.innerText = '❌ 权限被拒绝';
-                })
-                .catch(err => statusDiv.innerText = '⚠️ 授权失败');
-        } else {
-            enableMotion();
-        }
-    }
-
-    function enableMotion() {
-        motionEnabled = true;
-        audioAllowed = true;
-        statusDiv.innerText = '✅ 监测已启动 | 可使用归零校准';
-        window.addEventListener('devicemotion', handleMotion);
-        let hasData = false;
-        const checkInterval = setInterval(() => {
-            if (dataArray.length > 0) hasData = true;
-            if (!hasData && motionEnabled) {
-                statusDiv.innerText = '⚠️ 未收到传感器数据，请检查权限或晃动手机';
-            } else {
-                clearInterval(checkInterval);
-            }
-        }, 3000);
-    }
-
+    debugDiv.innerText = `📊 合成加速度: ${total.toFixed(3)} gal | 偏移 X:${offset.x.toFixed(3)} Y:${offset.y.toFixed(3)} Z:${offset.z.toFixed(3)}`;
+}  
     function initChart() {
         const ctx = document.getElementById('accelChart').getContext('2d');
         chart = new Chart(ctx, {
@@ -372,6 +301,7 @@ function startCalibration() {
         chart.update();
     }
 
+    // 事件绑定
     toggleUnitBtn.addEventListener('click', () => {
         displayUnit = displayUnit === "gal" ? "ms2" : "gal";
         toggleUnitBtn.innerText = displayUnit === "gal" ? "📏 显示 gal" : "📏 显示 m/s²";

@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>高分辨率线性加速度 · 完整增强版</title>
-    <!-- Chart.js 用于曲线 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * {
@@ -164,7 +163,7 @@
 </head>
 <body>
 <div class="container">
-<!-- 原始卡片：线性加速度 + 含重力数据（您的原有结构） -->
+<!-- 原始卡片：线性加速度 + 含重力数据 -->
 <div class="card">
     <div class="card-title">高分辨率线性加速度 (高通滤波)</div>
     <div class="grid-2col">
@@ -186,7 +185,7 @@
         <div style="margin-bottom: 8px;">原始含重力数据（对比分辨率）</div>
         <div>X: <span id="rawX">--</span> Gal &nbsp; | Y: <span id="rawY">--</span> Gal &nbsp; | Z: <span id="rawZ">--</span> Gal</div>
     </div>
-</div>
+</div>  
 <script>
     (function() {
         // 滤波参数 —— 截止频率约 5Hz（采样率按 50Hz 估算）
@@ -331,13 +330,13 @@
         </div>
     </div>
 
-    <!-- 授权按钮和状态 -->
+    <!-- 授权按钮和状态（原始代码使用的元素） -->
     <div class="card" style="text-align: center;">
         <button id="requestBtn">🔐 授权传感器（iOS必需，Android点不点都行）</button>
         <div id="status" class="status-text">⚡ 等待授权/数据...</div>
         <footer>核心滤波算法未改动 | 归零校准仅修正显示偏差 | 震度上升时有提示音</footer>
     </div>
-</div>
+</div>   
 <script>
     (function() {
         // ---------- 读取线性加速度的辅助函数 ----------
@@ -422,7 +421,6 @@
                     offset.z = sz / calibrateSamples.length;
                     calibrating = false;
                     statusDiv.innerText = '✅ 归零校准完成，显示已归零';
-                    // 强制刷新一次显示
                     updateUIAndChart();
                 }
             }, 30);
@@ -484,6 +482,7 @@
             speedSlider.addEventListener('input', (e) => {
                 updateInterval = parseInt(e.target.value);
                 speedValue.innerText = updateInterval;
+                startTimer();
             });
         }
 
@@ -505,10 +504,9 @@
             const cur = japanIntensityValue(japan);
             if (cur > prev) {
                 playBeepByIntensity(japan);
-                // 闪烁效果（可选）
                 document.body.style.transition = 'background 0.1s';
                 document.body.style.background = '#3a2a2a';
-                setTimeout(() => documement.body.style.background = '', 200);
+                setTimeout(() => document.body.style.background = '',200);
                 }
                 lastJapanIntensity = japan;
                 // 更新图表
@@ -520,7 +518,6 @@
                 }
             }
 
-            // 定时器驱动更新（可调节频率）
             let timer = null;
             function startTimer() {
                 if (timer) clearInterval(timer);
@@ -528,25 +525,13 @@
                     updateUIAndChart();
                 }, updateInterval);
             }
-            // 监听更新速度变化
-            speedSlider.addEventListener('input', () => {
-                updateInterval = parseInt(speedSlider.value);
-                startTimer();
-            });
 
-            // 授权后允许音频播放（延迟到用户交互后）
-            const originalRequest = requestSensorPermission;
-            window.requestSensorPermission = function() {
+            // 监听原始按钮的点击以启用音频（用户交互后）
+            const originalBtn = document.getElementById('requestBtn');
+            const originalClick = originalBtn.onclick;
+            originalBtn.onclick = function(e) {
                 audioAllowed = true;
-                originalRequest();
-            };
-            // 替换按钮事件（保留原始按钮同时增加音频授权）
-            const btn = document.getElementById('requestBtn');
-            const oldClick = btn.onclick;
-            btn.onclick = function(e) {
-                audioAllowed = true;
-                if (oldClick) oldClick(e);
-                else requestSensorPermission();
+                if (originalClick) originalClick(e);
             };
 
             // 归零校准按钮
@@ -556,10 +541,9 @@
             initChart();
             startTimer();
 
-            // 如果原始代码自动启动了监听，我们需要确保音频授权标记为true（Android）
-            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') {
-                audioAllowed = true;
-            }
+            // 如果 Android 自动启动了监听，则音频也可以直接允许（因为已经有点击按钮的动作？不，Android 可能没有点击按钮就自动启动，但音频仍需要用户交互才能播放。
+            // 为了安全，我们在任何用户交互时设置 audioAllowed = true，上面按钮已经做了。
+            // 如果自动启动且用户从未点击按钮，音频不会播放，这符合浏览器策略。
         })();
     </script>
 </body>

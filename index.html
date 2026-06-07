@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>加速度监测器</title>
+    <title>加速度监测器 (gal)</title>
     <style>
         * {
             margin: 0;
@@ -115,42 +115,42 @@
 </head>
 <body>
 <div class="container">
-    <h1>📳 加速度监测仪</h1>
-    <div class="card">
+    <h1>📳 加速度监测仪 (gal)</h1>
+     <div class="card">
         <div class="data-row">
-            <span class="data-label">加速度 X (含重力)</span>
+            <span class="data-label">加速度 X (含重力) [gal]</span>
             <span class="data-value" id="accel-g-x">0.00</span>
         </div>
         <div class="data-row">
-            <span class="data-label">加速度 Y (含重力)</span>
+            <span class="data-label">加速度 Y (含重力) [gal]</span>
             <span class="data-value" id="accel-g-y">0.00</span>
         </div>
         <div class="data-row">
-            <span class="data-label">加速度 Z (含重力)</span>
+            <span class="data-label">加速度 Z (含重力) [gal]</span>
             <span class="data-value" id="accel-g-z">0.00</span>
         </div>
         <div class="data-row">
-            <span class="data-label">线性加速度 X</span>
+            <span class="data-label">线性加速度 X [gal]</span>
             <span class="data-value" id="linear-x">0.00</span>
         </div>
         <div class="data-row">
-            <span class="data-label">线性加速度 Y</span>
+            <span class="data-label">线性加速度 Y [gal]</span>
             <span class="data-value" id="linear-y">0.00</span>
         </div>
         <div class="data-row">
-            <span class="data-label">线性加速度 Z</span>
+            <span class="data-label">线性加速度 Z [gal]</span>
             <span class="data-value" id="linear-z">0.00</span>
         </div>
         <div class="data-row">
-            <span class="data-label">旋转速率 α (alpha)</span>
+            <span class="data-label">旋转速率 α [deg/s]</span>
             <span class="data-value" id="rot-alpha">0.00</span>
         </div>
         <div class="data-row">
-            <span class="data-label">旋转速率 β (beta)</span>
+            <span class="data-label">旋转速率 β [deg/s]</span>
             <span class="data-value" id="rot-beta">0.00</span>
         </div>
         <div class="data-row">
-            <span class="data-label">旋转速率 γ (gamma)</span>
+            <span class="data-label">旋转速率 γ [deg/s]</span>
             <span class="data-value" id="rot-gamma">0.00</span>
         </div>
     </div>
@@ -162,8 +162,8 @@
     </div>
     <button id="requestBtn" class="permission-btn">🔘 请求传感器权限</button>
     <div id="statusMsg" class="status">⚡ 点击上方按钮授权后开始监测</div>
-    <footer>倾斜手机 → 小球移动 | 数据实时更新</footer>
-</div>
+    <footer>倾斜手机 → 小球移动 | 加速度单位: gal (1 gal = 1 cm/s²)</footer>
+</div>   
 <script>
     let motionEnabled = false;
     const accelGX = document.getElementById('accel-g-x');
@@ -195,21 +195,22 @@
         if (!motionEnabled) return;
         const accel = event.accelerationIncludingGravity;
         if (accel) {
-            accelGX.innerText = (accel.x || 0).toFixed(2);
-            accelGY.innerText = (accel.y || 0).toFixed(2);
-            accelGZ.innerText = (accel.z || 0).toFixed(2);
+            // 转换为 gal (1 m/s² = 100 gal)
+            accelGX.innerText = ((accel.x || 0) * 100).toFixed(1);
+            accelGY.innerText = ((accel.y || 0) * 100).toFixed(1);
+            accelGZ.innerText = ((accel.z || 0) * 100).toFixed(1);
         }
         const linear = event.acceleration;
         if (linear) {
-            linearX.innerText = (linear.x || 0).toFixed(2);
-            linearY.innerText = (linear.y || 0).toFixed(2);
-            linearZ.innerText = (linear.z || 0).toFixed(2);
+            linearX.innerText = ((linear.x || 0) * 100).toFixed(1);
+            linearY.innerText = ((linear.y || 0) * 100).toFixed(1);
+            linearZ.innerText = ((linear.z || 0) * 100).toFixed(1);
         }
         const rotation = event.rotationRate;
         if (rotation) {
-            rotAlpha.innerText = (rotation.alpha || 0).toFixed(2);
-            rotBeta.innerText = (rotation.beta || 0).toFixed(2);
-            rotGamma.innerText = (rotation.gamma || 0).toFixed(2);
+            rotAlpha.innerText = (rotation.alpha || 0).toFixed(1);
+            rotBeta.innerText = (rotation.beta || 0).toFixed(1);
+            rotGamma.innerText = (rotation.gamma || 0).toFixed(1);
         }
     }
 
@@ -236,7 +237,7 @@
 
     function enableMotion() {
         motionEnabled = true;
-        statusDiv.innerText = '✅ 监测已启动 | 倾斜手机试试';
+        statusDiv.innerText = '✅ 监测已启动 (单位: gal) | 倾斜手机试试';
         window.addEventListener('devicemotion', handleMotion);
         window.addEventListener('deviceorientation', handleOrientation);
     }
@@ -254,7 +255,7 @@
     if (typeof DeviceMotionEvent !== 'undefined' && DeviceMotionEvent.requestPermission) {
         statusDiv.innerText = '📱 iOS 需要点击按钮授权';
     } else {
-        statusDiv.innerText = '🟢 点击按钮开始监测';
+        statusDiv.innerText = '🟢 点击按钮开始监测 (gal)';
     }
 </script>
 </body>

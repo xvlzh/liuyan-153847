@@ -10,6 +10,7 @@
     <p>X轴: <span id="linX">--</span> Gal</p>
     <p>Y轴: <span id="linY">--</span> Gal</p>
     <p>Z轴: <span id="linZ">--</span> Gal</p>
+    <p>合成加速度: <span id="totalAccel">--</span> Gal</p>
     <hr>
     <p>原始含重力数据（对比分辨率）:</p>
     <p>X: <span id="rawX">--</span> Gal | Y: <span id="rawY">--</span> Gal | Z: <span id="rawZ">--</span> Gal</p>
@@ -17,5 +18,18 @@
     <p id="status">等待授权/数据...</p>
     <button id="requestBtn">授权传感器</button>
     <script src="my_algorithm.js"></script>
+    <script>
+(function() {
+    function updateTotal() {
+        const x = parseFloat(document.getElementById('linX').innerText);
+        const y = parseFloat(document.getElementById('linY').innerText);
+        const z = parseFloat(document.getElementById('linZ').innerText);
+        if (isNaN(x) || isNaN(y) || isNaN(z)) return;
+        const total = Math.sqrt(x*x + y*y + z*z);
+        document.getElementById('totalAccel').innerText = total.toFixed(2);
+    }
+    setInterval(updateTotal, 100);
+})();
+    </script>
 </body>
 </html>  

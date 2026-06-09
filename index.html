@@ -20,10 +20,6 @@
     <button id="requestBtn">授权传感器</button>
     <button id="calibrateBtn">归零校准</button>
 <canvas id="accelChart" width="400" height="200" style="max-width:100%; background:#1e2a3a; border-radius:12px; margin-top:20px;"></canvas>
-<div style="margin: 10px 0;">
-    <label>曲线范围 ± <span id="rangeValue">200</span> Gal</label>
-    <input type="range" id="rangeSlider" min="5" max="500" value="200" step="5">
-</div>
         <script src="my_algorithm.js"></script>
 
     <script>
@@ -60,24 +56,7 @@
                     }
                 }
             });
-            const slider = document.getElementById('rangeSlider');
-            const rangeSpan = document.getElementById('rangeValue');
-            if (slider) {
-                slider.addEventListener('input', function(e) {
-                    const val = parseInt(e.target.value);
-                    rangeSpan.innerText = val;
-                    if (chart) {
-                        chart.options.scales.y.max = val;
-                        chart.options.scales.y.min = -val;
-                        chart.update();
-                    }
-                });
-                const initVal = parseInt(slider.value);
-                rangeSpan.innerText = initVal;
-                chart.options.scales.y.max = initVal;
-                chart.options.scales.y.min = -initVal;
-                chart.update();
-            }
+            
         }
 
         function updateTotalAndChart() {
@@ -94,6 +73,39 @@
             if (dataHistory.length > 60) dataHistory.shift();
             if (chart) {
                 chart.data.datasets[0].data = [...dataHistory];
+                function updateTotalAndChart() {
+    const rawX = parseFloat(document.getElementById('linX').innerText);
+    const rawY = parseFloat(document.getElementById('linY').innerText);
+    const rawZ = parseFloat(document.getElementById('linZ').innerText);
+    if (isNaN(rawX) || isNaN(rawY) || isNaN(rawZ)) return;
+    const adjX = rawX - offset.x;
+    const adjY = rawY - offset.y;
+    const adjZ = rawZ - offset.z;
+    const total = Math.sqrt(adjX*adjX + adjY*adjY + adjZ*adjZ);
+    document.getElementById('totalAccel').innerText = total.toFixed(2);
+    
+    dataHistory.push(total);
+    if (dataHistory.length > 60) dataHistory.shift();
+    if (chart) {
+        chart.data.datasets[0].data = [...dataHistory];
+        
+        // ---------- 自动调节 Y 轴范围 ----------
+        const maxVal = Math.max(...dataHistory);
+        const minVal = Math.min(...dataHistory);
+        const absMax = Math.max(Math.abs(maxVal), Math.abs(minVal), 1);
+        let yMax = absMax * 1.1;   // 留 10% 余量
+        let yMin = -yMax;
+        // 避免静止时范围过小（如小于 10 Gal 时固定为 ±10）
+        if (yMax < 10) {
+            yMax = 10;
+            yMin = -10;
+        }
+        chart.options.scales.y.max = yMax;
+        chart.options.scales.y.min = yMin;
+        // ------------------------------------
+        chart.update();
+    }
+                }
                 chart.update();
             }
         }

@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>加速度监测 - v1.3.33</title>
+    <title>加速度监测 - v1.3.34</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <h3>高分辨率线性加速度（单位：Gal）</h3>
@@ -18,35 +19,92 @@
     <p id="status">等待授权/数据...</p>
     <button id="requestBtn">授权传感器</button>
     <button id="calibrateBtn">归零校准</button>
-    <script src="my_algorithm.js"></script>
+<canvas id="accelChart" width="400" height="200" style="max-width:100%; background:#1e2a3a; border-radius:12px; margin-top:20px;"></canvas>
+<div style="margin: 10px 0;">
+    <label>曲线范围 ± <span id="rangeValue">200</span> Gal</label>
+    <input type="range" id="rangeSlider" min="5" max="500" value="200" step="5">
+</div>
+        <script src="my_algorithm.js"></script>
+
     <script>
     (function() {
-        // 归零偏移量（初始为0）
         let offset = { x: 0, y: 0, z: 0 };
+        let chart = null;
+        let dataHistory = Array(60).fill(0);
 
-        // 更新合成加速度（应用偏移）
-        function updateTotal() {
+        function initChart() {
+            const ctx = document.getElementById('accelChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array(60).fill(''),
+                    datasets: [{
+                        label: '合成加速度 (Gal)',
+                        data: dataHistory,
+                        borderColor: '#ffaa66',
+                        backgroundColor: 'rgba(255,170,102,0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    animation: false,
+                    plugins: { legend: { labels: { color: '#ddd' } } },
+                    scales: {
+                        y: { title: { display: true, text: 'Gal', color: '#aaa' }, min: -200, max: 200 },
+                        x: { ticks: { display: false } }
+                    }
+                }
+            });
+            const slider = document.getElementById('rangeSlider');
+            const rangeSpan = document.getElementById('rangeValue');
+            if (slider) {
+                slider.addEventListener('input', function(e) {
+                    const val = parseInt(e.target.value);
+                    rangeSpan.innerText = val;
+                    if (chart) {
+                        chart.options.scales.y.max = val;
+                        chart.options.scales.y.min = -val;
+                        chart.update();
+                    }
+                });
+                const initVal = parseInt(slider.value);
+                rangeSpan.innerText = initVal;
+                chart.options.scales.y.max = initVal;
+                chart.options.scales.y.min = -initVal;
+                chart.update();
+            }
+        }
+
+        function updateTotalAndChart() {
             const rawX = parseFloat(document.getElementById('linX').innerText);
             const rawY = parseFloat(document.getElementById('linY').innerText);
             const rawZ = parseFloat(document.getElementById('linZ').innerText);
             if (isNaN(rawX) || isNaN(rawY) || isNaN(rawZ)) return;
-        
-        // 应用偏移
             const adjX = rawX - offset.x;
             const adjY = rawY - offset.y;
             const adjZ = rawZ - offset.z;
             const total = Math.sqrt(adjX*adjX + adjY*adjY + adjZ*adjZ);
             document.getElementById('totalAccel').innerText = total.toFixed(2);
+            dataHistory.push(total);
+            if (dataHistory.length > 60) dataHistory.shift();
+            if (chart) {
+                chart.data.datasets[0].data = [...dataHistory];
+                chart.update();
+            }
         }
 
-    // 归零校准：将当前三轴读数设为偏移
         function calibrate() {
             const rawX = parseFloat(document.getElementById('linX').innerText);
             const rawY = parseFloat(document.getElementById('linY').innerText);
             const rawZ = parseFloat(document.getElementById('linZ').innerText);
             if (!isNaN(rawX) && !isNaN(rawY) && !isNaN(rawZ)) {
                 offset = { x: rawX, y: rawY, z: rawZ };
-                updateTotal();  // 立即刷新合成加速度
+                updateTotalAndChart();
                 document.getElementById('status').innerText = '已归零校准，当前合成加速度归零';
                 setTimeout(() => {
                     if (document.getElementById('status').innerText === '已归零校准，当前合成加速度归零')
@@ -55,13 +113,10 @@
             }
         }
 
-    // 绑定按钮事件
-        const calibrateBtn = document.getElementById('calibrateBtn');
-        if (calibrateBtn) calibrateBtn.addEventListener('click', calibrate);
-
-    // 定时更新
-        setInterval(updateTotal, 100);
+        document.getElementById('calibrateBtn').addEventListener('click', calibrate);
+        initChart();
+        setInterval(updateTotalAndChart, 100);
     })();
     </script>
 </body>
-</html>    
+</html>

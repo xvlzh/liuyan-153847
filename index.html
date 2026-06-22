@@ -22,12 +22,54 @@
 <canvas id="accelChart" width="400" height="200" style="max-width:100%; background:#1e2a3a; border-radius:12px; margin-top:20px;"></canvas>
         <script src="my_algorithm.js"></script>
 
+
     <script>
     (function() {
+        // ---------- 归零偏移 ----------
         let offset = { x: 0, y: 0, z: 0 };
         let chart = null;
         let dataHistory = Array(60).fill(0);
 
+        // ---------- 震度映射 ----------
+        function getJapanIntensity(gal) {
+            if (gal < 0.8) return "0";
+            if (gal < 2.5) return "1";
+            if (gal < 8.0) return "2";
+            if (gal < 25) return "3";
+            if (gal < 80) return "4";
+            if (gal < 140) return "5弱";
+            if (gal < 250) return "5强";
+            if (gal < 400) return "6弱";
+            if (gal < 700) return "6强";
+            return "7";
+        }
+        function japanVal(intensity) {
+            const map = { "0":0,"1":1,"2":2,"3":3,"4":4,"5弱":5.1,"5强":5.5,"6弱":6.1,"6强":6.5,"7":7 };
+            return map[intensity] !== undefined ? map[intensity] : 0;
+        }
+
+        // ---------- 音频播放 ----------
+        let audioAllowed = false;
+        let lastJapan = "0";
+        let lastPlayTime = 0;
+        const DEBOUNCE_MS = 350;
+
+        function playBeep(intensity) {
+            if (!audioAllowed) return;
+            const now = Date.now();
+            if (now - lastPlayTime < DEBOUNCE_MS) return;
+            const map = {
+                "0":"shindo0","1":"shindo1","2":"shindo2","3":"shindo3","4":"shindo4",
+                "5弱":"shindo5","5强":"shindo5","6弱":"shindo6","6强":"shindo6","7":"shindo7"
+            };
+            const name = map[intensity];
+            if (!name) return;
+            const audio = new Audio(`/${name}.mp3`);
+            audio.play().catch(e => console.log("音频播放失败", e));
+            lastPlayTime = now;
+        }
+
+        // ---------- 图表初始化 ----------
         function initChart() {
             const ctx = document.getElementById('accelChart').getContext('2d');
             chart = new Chart(ctx, {
@@ -38,7 +80,7 @@
                         label: '合成加速度 (Gal)',
                         data: dataHistory,
                         borderColor: '#ffaa66',
-                        backgroundColor: 'rgba(255,170,102,0.1)',
+                        backgroundColor: 'rgba(255,170,102,0.15)',
                         borderWidth: 2,
                         pointRadius: 0,
                         tension: 0,
@@ -49,67 +91,67 @@
                     responsive: true,
                     maintainAspectRatio: true,
                     animation: false,
-                    plugins: { legend: { labels: { color: '#ddd' } } },
+                    plugins: {
+                        legend: { labels: { color: '#ccc' } }
+                    },
                     scales: {
-                        y: { title: { display: true, text: 'Gal', color: '#aaa' }, min: -200, max: 200 },
+                        y: {
+                            title: { display: true, text: 'Gal', color: '#aaa' },
+                            min: -10,
+                            max: 10,
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
                         x: { ticks: { display: false } }
                     }
                 }
             });
-            
         }
 
+        // ---------- 更新合成加速度、图表、震度音效 ----------
         function updateTotalAndChart() {
             const rawX = parseFloat(document.getElementById('linX').innerText);
             const rawY = parseFloat(document.getElementById('linY').innerText);
             const rawZ = parseFloat(document.getElementById('linZ').innerText);
             if (isNaN(rawX) || isNaN(rawY) || isNaN(rawZ)) return;
+
             const adjX = rawX - offset.x;
             const adjY = rawY - offset.y;
             const adjZ = rawZ - offset.z;
             const total = Math.sqrt(adjX*adjX + adjY*adjY + adjZ*adjZ);
             document.getElementById('totalAccel').innerText = total.toFixed(2);
+
+            // 震度计算与音效
+            const japan = getJapanIntensity(total);
+            const prevVal = japanVal(lastJapan);
+            const curVal = japanVal(japan);
+            if (curVal > prevVal) {
+                playBeep(japan);
+                // 简单闪烁提示（可选）
+                document.body.style.transition = 'background 0.1s';
+                document.body.style.background = '#3a2a2a';
+                setTimeout(() => document.body.style.background = '', 200);
+            }
+            lastJapan = japan;
+
+            // 更新图表
             dataHistory.push(total);
             if (dataHistory.length > 60) dataHistory.shift();
             if (chart) {
                 chart.data.datasets[0].data = [...dataHistory];
-                function updateTotalAndChart() {
-    const rawX = parseFloat(document.getElementById('linX').innerText);
-    const rawY = parseFloat(document.getElementById('linY').innerText);
-    const rawZ = parseFloat(document.getElementById('linZ').innerText);
-    if (isNaN(rawX) || isNaN(rawY) || isNaN(rawZ)) return;
-    const adjX = rawX - offset.x;
-    const adjY = rawY - offset.y;
-    const adjZ = rawZ - offset.z;
-    const total = Math.sqrt(adjX*adjX + adjY*adjY + adjZ*adjZ);
-    document.getElementById('totalAccel').innerText = total.toFixed(2);
-    
-    dataHistory.push(total);
-    if (dataHistory.length > 60) dataHistory.shift();
-    if (chart) {
-        chart.data.datasets[0].data = [...dataHistory];
-        
-        // ---------- 自动调节 Y 轴范围 ----------
-        const maxVal = Math.max(...dataHistory);
-        const minVal = Math.min(...dataHistory);
-        const absMax = Math.max(Math.abs(maxVal), Math.abs(minVal), 1);
-        let yMax = absMax * 1.1;   // 留 10% 余量
-        let yMin = -yMax;
-        // 避免静止时范围过小（如小于 10 Gal 时固定为 ±10）
-        if (yMax < 10) {
-            yMax = 10;
-            yMin = -10;
-        }
-        chart.options.scales.y.max = yMax;
-        chart.options.scales.y.min = yMin;
-        // ------------------------------------
-        chart.update();
-    }
-                }
+                // 自动调节 Y 轴范围
+                const maxVal = Math.max(...dataHistory);
+                const minVal = Math.min(...dataHistory);
+                const absMax = Math.max(Math.abs(maxVal), Math.abs(minVal), 1);
+                let yMax = absMax * 1.1;
+                let yMin = -yMax;
+                if (yMax < 10) { yMax = 10; yMin = -10; }
+                chart.options.scales.y.max = yMax;
+                chart.options.scales.y.min = yMin;
                 chart.update();
             }
         }
 
+        // ---------- 归零校准 ----------
         function calibrate() {
             const rawX = parseFloat(document.getElementById('linX').innerText);
             const rawY = parseFloat(document.getElementById('linY').innerText);
@@ -117,17 +159,31 @@
             if (!isNaN(rawX) && !isNaN(rawY) && !isNaN(rawZ)) {
                 offset = { x: rawX, y: rawY, z: rawZ };
                 updateTotalAndChart();
-                document.getElementById('status').innerText = '已归零校准，当前合成加速度归零';
+                document.getElementById('status').innerText = '归零校准完成，合成加速度归零';
                 setTimeout(() => {
-                    if (document.getElementById('status').innerText === '已归零校准，当前合成加速度归零')
-                        document.getElementById('status').innerText = '数据实时更新中';
+                    const statusEl = document.getElementById('status');
+                    if (statusEl.innerText === '归零校准完成，合成加速度归零')
+                        statusEl.innerText = '数据实时更新中';
                 }, 2000);
             }
         }
 
+        // ---------- 绑定按钮、初始化 ----------
         document.getElementById('calibrateBtn').addEventListener('click', calibrate);
         initChart();
         setInterval(updateTotalAndChart, 100);
+
+        // 当用户点击“授权传感器”时，允许音频播放（浏览器策略要求）
+        const origBtn = document.getElementById('requestBtn');
+        const origClick = origBtn.onclick;
+        origBtn.onclick = function(e) {
+            audioAllowed = true;
+            if (origClick) origClick(e);
+        };
+        // 如果 Android 自动启动，音频暂不允许，但用户点击按钮后会启用
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') {
+            // Android 下，点击授权按钮也会触发 audioAllowed = true，所以没问题
+        }
     })();
     </script>
 </body>
